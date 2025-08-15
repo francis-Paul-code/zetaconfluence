@@ -4714,6 +4714,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"classnames@npm:^2.5.1":
+  version: 2.5.1
+  resolution: "classnames@npm:2.5.1"
+  checksum: da424a8a6f3a96a2e87d01a432ba19315503294ac7e025f9fece656db6b6a0f7b5003bb1fbb51cbb0d9624d964f1b9bb35a51c73af9b2434c7b292c42231c1e5
+  languageName: node
+  linkType: hard
+
 "clean-stack@npm:^2.0.0":
   version: 2.2.0
   resolution: "clean-stack@npm:2.2.0"
@@ -6068,6 +6075,7 @@ __metadata:
     "@types/react-dom": ^19.1.6
     "@vitejs/plugin-react": ^4.6.0
     "@zetachain/toolkit": 16.0.1
+    classnames: ^2.5.1
     clsx: ^2.1.1
     eslint: ^9.30.1
     eslint-config-prettier: ^10.1.1

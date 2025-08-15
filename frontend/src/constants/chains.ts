@@ -1,9 +1,65 @@
+import type { EIP6963ProviderDetail } from '../types/wallet';
+
 export interface SupportedChain {
   explorerUrl: string;
   name: string;
   chainId: number;
   icon: string;
   colorHex: string;
+}
+export interface Explorer {
+  name: string;
+  url: string;
+  icon?: string;
+  standard?: string;
+}
+
+export interface Feature {
+  name: string;
+}
+
+export interface NativeCurrency {
+  name: string;
+  symbol: string;
+  decimals: number;
+}
+export interface WalletToken {
+  token_address: string;
+  symbol: string;
+  name: string;
+  logo: string | null;
+  thumbnail: string | null;
+  decimals: number;
+  balance: string;
+  possible_spam: boolean;
+  verified_contract: boolean;
+  total_supply: string | null;
+  total_supply_formatted: string | null;
+  percentage_relative_to_total_supply: number | null;
+  security_score: number | null;
+  balance_formatted: string;
+  usd_price: number | null;
+  usd_price_24hr_percent_change: number | null;
+  usd_price_24hr_usd_change: number | null;
+  usd_value: number | null;
+  usd_value_24hr_usd_change: number | null;
+  native_token: boolean;
+  portfolio_percentage: number | null;
+}
+
+export interface ChainInfo {
+  name: string;
+  chain: string;
+  rpc: string[];
+  faucets: string[];
+  nativeCurrency: NativeCurrency;
+  features?: Feature[];
+  infoURL?: string;
+  shortName?: string;
+  chainId: number;
+  networkId?: number;
+  icon?: string;
+  explorers?: Explorer[];
 }
 
 export const SUPPORTED_CHAINS: SupportedChain[] = [
@@ -57,3 +113,11 @@ export const SUPPORTED_CHAIN_IDS = SUPPORTED_CHAINS.map(
 
 export const ZETACHAIN_ATHENS_BLOCKSCOUT_EXPLORER_URL =
   'https://zetachain-testnet.blockscout.com/tx/';
+
+export interface Wallet {
+  account: string | null;
+  isSupportedChain: boolean;
+  decimalChainId: number | null;
+  eip6963: EIP6963ProviderDetail;
+  balances?: WalletToken[];
+}

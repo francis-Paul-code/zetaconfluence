@@ -1,7 +1,7 @@
 import React from 'react';
+import { IoMoon, IoSunny } from 'react-icons/io5';
 
 import { useTheme } from '../hooks/useTheme';
-import { IconThemeMoon, IconThemeSun } from './icons';
 
 export const ThemeToggle: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
@@ -15,10 +15,10 @@ export const ThemeToggle: React.FC = () => {
     >
       {theme === 'light' ? (
         // Moon icon for dark mode
-        <IconThemeMoon />
+        <IoMoon />
       ) : (
         // Sun icon for light mode
-        <IconThemeSun />
+        <IoSunny />
       )}
     </button>
   );

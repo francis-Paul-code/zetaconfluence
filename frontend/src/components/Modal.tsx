@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect } from 'react';
+import { IoClose } from 'react-icons/io5';
 
-import { IconCloseModal } from './icons/IconCloseModal';
 
 interface ModalProps {
   isOpen: boolean;
@@ -27,7 +27,7 @@ export const Modal = ({ isOpen, onClose, title, children }: ModalProps) => {
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]"
+      className="fixed inset-0 bg-black/30 flex items-center justify-center z-[1000]"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -46,7 +46,7 @@ export const Modal = ({ isOpen, onClose, title, children }: ModalProps) => {
           onClick={onClose}
           aria-label="Close modal"
         >
-          <IconCloseModal />
+          <IoClose />
         </button>
       </div>
     </div>

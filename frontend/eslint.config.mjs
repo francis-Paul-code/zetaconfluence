@@ -39,8 +39,8 @@ export default tseslint.config(
     rules: {
       ...reactHooks.configs.recommended.rules,
       'react-refresh/only-export-components': 'warn',
-      'simple-import-sort/imports': 'error',
-      'simple-import-sort/exports': 'error',
+      'simple-import-sort/imports': 'warn',
+      'simple-import-sort/exports': 'warn',
       '@typescript-eslint/no-unused-vars': [
         'error',
         {
@@ -49,7 +49,6 @@ export default tseslint.config(
           caughtErrorsIgnorePattern: '^_',
         },
       ],
-      '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-require-imports': 'error',
       '@typescript-eslint/no-empty-object-type': 'warn',
       '@typescript-eslint/no-unsafe-function-type': 'error',

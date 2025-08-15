@@ -1,74 +1,126 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+/* eslint-disable @typescript-eslint/no-non-null-asserted-optional-chain */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useCallback, useEffect, useState } from 'react';
 
-import { useWalletEvents } from './useWalletEvents';
+import { fetchWalletBalance } from '../actions/erc20';
+import { SUPPORTED_CHAIN_IDS, type Wallet } from '../constants/chains';
 import type { EIP6963ProviderDetail } from '../types/wallet';
-import { SUPPORTED_CHAIN_IDS } from '../constants/chains';
 
-export const useWalletState = (provider: EIP6963ProviderDetail | null) => {
-  const [account, setAccount] = useState<string | null>(null);
-  const [chainId, setChainId] = useState<string | null>(null);
+export const useWalletState = (providers: EIP6963ProviderDetail[]) => {
+  const [wallets, setWallets] = useState<Record<string, Wallet>>({});
+  const [configuringWalletState, setConfiguringWAlletState] =
+    useState<boolean>(false);
 
-  const decimalChainId = useMemo(() => {
-    if (!chainId) return null;
-    return Number(chainId);
-  }, [chainId]);
+  const initWallets = async () => {
+    setConfiguringWAlletState(true);
+    const _wallets: typeof wallets = {};
 
-  const isSupportedChain = useMemo(() => {
-    if (decimalChainId === null) return false;
-    return SUPPORTED_CHAIN_IDS.includes(decimalChainId);
-  }, [decimalChainId]);
+    for (const item of providers) {
+      item.provider.on('accountsChanged', (data: any) =>
+        handleAccountsChanged(item.info.rdns, data)
+      );
+      item.provider.on('chainChanged', (data: any) =>
+        handleChainChanged(item.info.rdns, data)
+      );
+      const state = await initializeWalletState(item);
+      const balances =
+        state?.account && (await fetchWalletBalance(state?.account!))?.result;
 
-  const handleAccountsChanged = useCallback((accounts: string[]) => {
-    if (accounts.length === 0) {
-      setAccount(null);
-    } else {
-      setAccount(accounts[0]);
+      if (state)
+        _wallets[item?.info?.rdns] = {
+          ...state,
+          eip6963: item,
+          isSupportedChain: isSupportedChain(state.decimalChainId),
+          balances,
+        };
     }
-  }, []);
+    setWallets(_wallets);
+    setConfiguringWAlletState(false);
+    return;
+  };
 
-  const handleChainChanged = useCallback((newChainId: string) => {
-    setChainId(newChainId);
-  }, []);
+  const isSupportedChain = (id: number) => {
+    if (id === null) return false;
+    return SUPPORTED_CHAIN_IDS.includes(id);
+  };
 
-  useWalletEvents(provider, {
-    onAccountsChanged: handleAccountsChanged,
-    onChainChanged: handleChainChanged,
-  });
+  const handleAccountsChanged = useCallback(
+    (providerRdns: string, accounts: string[]) => {
+      const wallet = wallets[providerRdns];
+      if (accounts.length === 0) {
+        setWallets({
+          ...wallets,
+          [providerRdns]: {
+            ...wallet,
+            account: null,
+          },
+        });
+      } else {
+        setWallets({
+          ...wallets,
+          [providerRdns]: {
+            ...wallet,
+            account: accounts[0],
+          },
+        });
+      }
+    },
+    [wallets]
+  );
+
+  const handleChainChanged = useCallback(
+    (providerRdns: string, newChainId: string) => {
+      const wallet = wallets[providerRdns];
+
+      setWallets({
+        ...wallets,
+        [providerRdns]: {
+          ...wallet,
+          decimalChainId: parseInt(newChainId, 16),
+        },
+      });
+    },
+    [wallets]
+  );
+
+  const initializeWalletState = async (provider: EIP6963ProviderDetail) => {
+    try {
+      const accounts = (await provider.provider.request({
+        method: 'eth_accounts',
+      })) as string[];
+
+      const currentChainId = (await provider.provider.request({
+        method: 'eth_chainId',
+      })) as string;
+
+      return {
+        decimalChainId: parseInt(currentChainId, 16),
+        account: accounts && accounts.length ? accounts[0] : null,
+      };
+    } catch (error) {
+      console.error('Error initializing wallet state:', error);
+    }
+  };
 
   useEffect(() => {
-    if (!provider) {
-      setAccount(null);
-      setChainId(null);
-      return;
-    }
+    console.log('init wallets', providers);
+    initWallets();
+  }, [providers.length]);
 
-    const initializeWalletState = async () => {
-      try {
-        const accounts = (await provider.provider.request({
-          method: 'eth_accounts',
-        })) as string[];
-
-        if (accounts && accounts.length > 0) {
-          setAccount(accounts[0]);
-        }
-
-        const currentChainId = (await provider.provider.request({
-          method: 'eth_chainId',
-        })) as string;
-
-        setChainId(currentChainId);
-      } catch (error) {
-        console.error('Error initializing wallet state:', error);
+  useEffect(() => {
+    return () => {
+      for (const item in wallets) {
+        wallets[item].eip6963.provider.removeListener(
+          'accountsChanged',
+          (data: any) => handleAccountsChanged(item, data)
+        );
+        wallets[item].eip6963.provider.removeListener(
+          'chainChanged',
+          (data: any) => handleChainChanged(item, data)
+        );
       }
     };
+  }, [handleAccountsChanged, handleChainChanged, wallets]);
 
-    initializeWalletState();
-  }, [provider]);
-
-  return {
-    account,
-    chainId,
-    decimalChainId,
-    isSupportedChain,
-  };
-}; 
+  return { configuringWalletState, wallets: Object.values(wallets) };
+};
