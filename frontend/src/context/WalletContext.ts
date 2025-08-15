@@ -1,35 +1,37 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createContext } from 'react';
 
+import type { ChainInfo, Wallet } from '../constants/chains';
 import type { EIP6963ProviderDetail } from '../types/wallet';
 
 interface WalletContextType {
   providers: EIP6963ProviderDetail[];
-  selectedProvider: EIP6963ProviderDetail | null;
-  decimalChainId: number | null;
+  selectedProviders: Record<string, EIP6963ProviderDetail>;
   connecting: boolean;
   reconnecting: boolean;
-  isConnected: boolean;
-  isSupportedChain: boolean;
+  isConnected: (providerRdns: string) => boolean;
+  configuringWalletState: boolean;
   error: string | null;
   connectWallet: (provider: EIP6963ProviderDetail) => Promise<{
     success: boolean;
     account?: string | null;
     error?: string;
   }>;
-  disconnectWallet: () => void;
-  account: string | null;
+  disconnectWallet: (_: any) => void;
+  chains: ChainInfo[];
+  wallets: Wallet[];
 }
 
 export const WalletContext = createContext<WalletContextType>({
   providers: [],
-  selectedProvider: null,
-  decimalChainId: null,
+  selectedProviders: {},
+  wallets: [],
+  chains: [],
   connecting: false,
   reconnecting: false,
-  isConnected: false,
-  isSupportedChain: false,
+  configuringWalletState: false,
   error: null,
+  isConnected: () => true,
   connectWallet: async () => ({ success: false }),
   disconnectWallet: () => {},
-  account: null,
 });

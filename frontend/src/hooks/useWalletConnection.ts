@@ -8,32 +8,34 @@ import {
   findProviderByRdns,
   findProviderByUuid,
 } from '../utils/eip6963';
-import { getEmptyWalletData } from '../utils/walletStorage';
 import type { StoredWalletData } from '../utils/walletStorage';
+import { getEmptyWalletData } from '../utils/walletStorage';
 
-/**
- * Hook to manage wallet connections
- */
 export const useWalletConnection = (providers: EIP6963ProviderDetail[]) => {
-  const [selectedProvider, setSelectedProvider] =
-    useState<EIP6963ProviderDetail | null>(null);
+  const [selectedProviders, setSelectedProviders] = useState<
+    Record<string, EIP6963ProviderDetail>
+  >({});
   const [connecting, setConnecting] = useState(false);
   const [reconnecting, setReconnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Use localStorage to persist wallet connection data
-  const [savedWalletData, setSavedWalletData] =
-    useLocalStorage<StoredWalletData>(
-      'wallet-connection',
-      getEmptyWalletData()
-    );
+  const [savedWalletData, setSavedWalletData] = useLocalStorage<
+    Record<string, StoredWalletData>
+  >(`wallet-connections`, getEmptyWalletData());
 
   // Check if wallet is connected
-  const isConnected = Boolean(selectedProvider);
+  const isConnected = useCallback(
+    (providerRdns: string) => {
+      return Boolean(selectedProviders[providerRdns]);
+    },
+    [selectedProviders]
+  );
 
   // Connect wallet function
   const connectWallet = useCallback(
     async (provider: EIP6963ProviderDetail) => {
+      if (connecting) return;
       try {
         setConnecting(true);
         setError(null);
@@ -44,14 +46,21 @@ export const useWalletConnection = (providers: EIP6963ProviderDetail[]) => {
         })) as string[];
 
         if (accounts && accounts.length > 0) {
-          setSelectedProvider(provider);
+          console.log(selectedProviders);
+          setSelectedProviders({
+            ...selectedProviders,
+            [provider.info.rdns]: provider,
+          });
 
           // Save to localStorage with provider identifiers
           setSavedWalletData({
-            account: accounts[0],
-            providerUuid: provider.info.uuid,
-            providerName: provider.info.name,
-            providerRdns: provider.info.rdns,
+            ...savedWalletData,
+            [provider.info.rdns]: {
+              account: accounts[0],
+              providerUuid: provider.info.uuid,
+              providerName: provider.info.name,
+              providerRdns: provider.info.rdns,
+            },
           });
 
           return { success: true, account: accounts[0] };
@@ -82,105 +91,127 @@ export const useWalletConnection = (providers: EIP6963ProviderDetail[]) => {
         setConnecting(false);
       }
     },
-    [setSavedWalletData]
+    [connecting, savedWalletData, selectedProviders, setSavedWalletData]
   );
 
   // Disconnect wallet function
-  const disconnectWallet = useCallback(() => {
-    if (selectedProvider) {
-      // Clear localStorage when disconnecting
-      setSavedWalletData(getEmptyWalletData());
-      setSelectedProvider(null);
-    }
-  }, [selectedProvider, setSavedWalletData]);
+  const disconnectWallet = useCallback(
+    (walletUuid: string) => {
+      if (selectedProviders.length) {
+        // Clear localStorage when disconnecting
+        const saved: typeof savedWalletData = {};
+        const selected: typeof selectedProviders = {};
+        for (const item in savedWalletData) {
+          if (savedWalletData[item].providerUuid === walletUuid) return;
 
-  // Auto-reconnect logic
-  useEffect(() => {
-    // Skip if already connected or no saved data
-    if (isConnected || !savedWalletData?.account || providers.length === 0) {
-      return;
-    }
+          saved[savedWalletData[item].providerUuid!] = savedWalletData[item];
+        }
+        for (const item in selectedProviders) {
+          if (selectedProviders[item].info.uuid === walletUuid) return;
 
-    const reconnectWallet = async () => {
-      try {
-        setReconnecting(true);
+          selected[selectedProviders[item].info.rdns!] =
+            selectedProviders[item];
+        }
+        setSavedWalletData(saved);
+        setSelectedProviders(selected);
+      }
+    },
+    [selectedProviders, setSavedWalletData]
+  );
 
-        // Try to find the saved provider using multiple methods
-        let savedProvider = null;
+  const reconnectWallet = async () => {
+    console.log('a chnage is to happen')
+    try {
+      setReconnecting(true);
+      // Try to find the saved provider using multiple methods
+      const savedProviders: typeof selectedProviders = {};
+      const _savedWalletData: typeof savedWalletData = {};
+
+      for (const item in savedWalletData) {
+        const saved_provider = savedWalletData[item];
+        let _provider = null;
 
         // Method 1: Try to find by UUID (most specific)
-        if (savedWalletData.providerUuid) {
-          savedProvider = findProviderByUuid(
+        if (saved_provider.providerUuid) {
+          _provider = findProviderByUuid(
             providers,
-            savedWalletData.providerUuid
+            saved_provider.providerUuid!
           );
         }
 
         // Method 2: If not found by UUID, try to find by rdns
-        if (!savedProvider && savedWalletData.providerRdns) {
-          savedProvider = findProviderByRdns(
+        if (!_provider && saved_provider.providerRdns) {
+          _provider = findProviderByRdns(
             providers,
-            savedWalletData.providerRdns
+            saved_provider.providerRdns
           );
         }
 
         // Method 3: If still not found, try to find by name
-        if (!savedProvider && savedWalletData.providerName) {
-          savedProvider = findProviderByName(
+        if (!_provider && saved_provider.providerName) {
+          _provider = findProviderByName(
             providers,
-            savedWalletData.providerName
+            saved_provider.providerName
           );
         }
 
         // Method 4: Last resort - try to find by account
-        if (!savedProvider && savedWalletData.account) {
-          savedProvider = await findProviderByAccount(
+        if (!_provider && saved_provider.account) {
+          _provider = await findProviderByAccount(
             providers,
-            savedWalletData.account
+            saved_provider.account
           );
         }
 
-        if (savedProvider) {
-          // Check if we can get accounts without requesting permission
-          const accounts = (await savedProvider.provider.request({
+        if (_provider) {
+          if (savedProviders[_provider.info.rdns]) continue;
+
+          const accounts = (await _provider.provider.request({
             method: 'eth_accounts',
           })) as string[];
 
-          // If we have accounts and they include our saved account, we can reconnect
           if (
             accounts &&
             accounts.length > 0 &&
             accounts.some(
-              (a) => a.toLowerCase() === savedWalletData.account?.toLowerCase()
+              (a) => a.toLowerCase() === saved_provider.account?.toLowerCase()
             )
           ) {
-            setSelectedProvider(savedProvider);
+            savedProviders[_provider.info.rdns] = _provider;
+            _savedWalletData[_provider.info.rdns] = saved_provider;
           } else {
             // Clear saved data if we can't reconnect
-            setSavedWalletData(getEmptyWalletData());
+            continue;
           }
         }
-      } catch (error) {
-        // Don't clear saved data on transient errors
-        console.error('Error reconnecting wallet:', error);
-      } finally {
-        setReconnecting(false);
       }
-    };
+      setSavedWalletData(_savedWalletData);
+      setSelectedProviders(savedProviders);
+    } catch (error) {
+      // Don't clear saved data on transient errors
+      console.error('Error reconnecting wallet:', error);
+    } finally {
+      setReconnecting(false);
+    }
+  };
 
-    // Only try to reconnect if we have providers
+  useEffect(() => {
+    if (!savedWalletData) return;
+
+    console.log('effecting a change');
     if (providers.length > 0) {
       // Add a small delay to allow providers to load
-      const timeout = setTimeout(() => {
-        reconnectWallet();
+      const timeout = setTimeout(async () => {
+        await reconnectWallet();
       }, 500);
 
       return () => clearTimeout(timeout);
     }
-  }, [providers, savedWalletData, isConnected, setSavedWalletData]);
+  }, [providers]);
+
 
   return {
-    selectedProvider,
+    selectedProviders,
     connecting,
     reconnecting,
     isConnected,
@@ -188,4 +219,4 @@ export const useWalletConnection = (providers: EIP6963ProviderDetail[]) => {
     connectWallet,
     disconnectWallet,
   };
-}; 
+};

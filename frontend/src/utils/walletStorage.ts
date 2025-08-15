@@ -11,11 +11,6 @@ export interface StoredWalletData {
 /**
  * Get empty wallet data structure
  */
-export const getEmptyWalletData = (): StoredWalletData => {
-  return {
-    account: null,
-    providerUuid: null,
-    providerName: null,
-    providerRdns: null,
-  };
-}; 
+export const getEmptyWalletData = (): Record<string, StoredWalletData> => {
+  return {};
+};

@@ -10,7 +10,7 @@ import { WalletContext } from './WalletContext';
 export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const { providers } = useWalletProviders();
   const {
-    selectedProvider,
+    selectedProviders,
     connecting,
     reconnecting,
     isConnected,
@@ -18,35 +18,36 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     connectWallet,
     disconnectWallet,
   } = useWalletConnection(providers);
-  const { account, isSupportedChain, decimalChainId } =
-    useWalletState(selectedProvider);
+
+  // Call useWalletState for each selectedProvider in a way that follows the Rules of Hooks
+  const { wallets, configuringWalletState } = useWalletState(
+    Object.values(selectedProviders)
+  );
 
   const contextValue = useMemo(
     () => ({
       providers,
-      selectedProvider,
+      selectedProviders,
       connecting,
       reconnecting,
-      isConnected,
-      isSupportedChain,
-      decimalChainId,
+      configuringWalletState,
+      wallets,
       error,
+      isConnected,
       connectWallet,
       disconnectWallet,
-      account,
     }),
     [
       providers,
-      selectedProvider,
+      selectedProviders,
       connecting,
       reconnecting,
-      isConnected,
-      isSupportedChain,
-      decimalChainId,
+      wallets,
       error,
       connectWallet,
+      configuringWalletState,
+      isConnected,
       disconnectWallet,
-      account,
     ]
   );
 

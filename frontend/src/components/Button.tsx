@@ -1,4 +1,4 @@
-import clsx from 'clsx';
+import classNames from 'classnames';
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -19,20 +19,15 @@ export const Button = ({
   return (
     <button
       type={type}
-      className={clsx(
-        // Base styles
-        'flex items-center justify-center gap-2 rounded-full font-medium text-base leading-none transition-all duration-200',
-        // Variant styles
-        {
+      className={
+        'cursor-pointer flex items-center justify-center gap-2 rounded-full font-medium text-base leading-none transition-all duration-200 disabled:cursor-not-allowed disabled:bg-[#e5e8ec] disabled:text-[#696e75] dark:disabled:bg-[#283442] dark:disabled:text-[#a9acb0] ' +
+        classNames({
           'px-4 py-3': variant === 'thin',
           'p-4': variant === 'default',
-        },
-        // Theme styles
-        'bg-[var(--button-light)] text-[var(--primary-light)] dark:bg-[var(--button-dark)] dark:text-[var(--primary-dark)]',
-        // Disabled styles
-        'disabled:cursor-not-allowed disabled:bg-[#e5e8ec] disabled:text-[#696e75] dark:disabled:bg-[#283442] dark:disabled:text-[#a9acb0]',
+        }) +
+        ' ' +
         className
-      )}
+      }
       {...props}
     >
       <div className="flex items-center gap-2">
