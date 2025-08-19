@@ -1,15 +1,21 @@
 import { type ReactNode, useEffect } from 'react';
 import { IoClose } from 'react-icons/io5';
 
-
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
+  className: string;
   children: ReactNode;
 }
 
-export const Modal = ({ isOpen, onClose, title, children }: ModalProps) => {
+export const Modal = ({
+  isOpen,
+  onClose,
+  title,
+  className = '',
+  children,
+}: ModalProps) => {
   useEffect(() => {
     const handleEscapeKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -34,7 +40,7 @@ export const Modal = ({ isOpen, onClose, title, children }: ModalProps) => {
       aria-labelledby="modal-title"
     >
       <div
-        className="relative p-8 w-[90%] max-w-[400px] rounded-2xl bg-white dark:bg-[#313131] border border-[#f0f0f0] dark:border-[#3f3f3f] text-black dark:text-white"
+        className={`relative p-8 w-[90%] max-w-[400px] rounded-2xl bg-white dark:bg-[#313131] border border-[#f0f0f0] dark:border-[#3f3f3f] text-black dark:text-white  ${className}`}
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id="modal-title" className="text-xl font-semibold mt-0 mb-6">

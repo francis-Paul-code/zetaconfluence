@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createContext } from 'react';
 
 import type { ChainInfo, Wallet } from '../constants/chains';
@@ -12,12 +11,13 @@ interface WalletContextType {
   isConnected: (providerRdns: string) => boolean;
   configuringWalletState: boolean;
   error: string | null;
+  bitcoin?: any | null;
   connectWallet: (provider: EIP6963ProviderDetail) => Promise<{
     success: boolean;
     account?: string | null;
     error?: string;
   }>;
-  disconnectWallet: (_: any) => void;
+  disconnectWallet: (providerRdns: string) => Promise<void>;
   chains: ChainInfo[];
   wallets: Wallet[];
 }
@@ -31,7 +31,8 @@ export const WalletContext = createContext<WalletContextType>({
   reconnecting: false,
   configuringWalletState: false,
   error: null,
+  bitcoin: null,
   isConnected: () => true,
   connectWallet: async () => ({ success: false }),
-  disconnectWallet: () => {},
+  disconnectWallet: async () => {},
 });

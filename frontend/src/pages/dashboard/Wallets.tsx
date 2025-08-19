@@ -23,23 +23,28 @@ const Wallets = () => {
         </div>
       ) : (
         <div className="w-full h-full overflow-y-scroll">
-          <div className="w-full h-auto flex items-center mb-5 gap-2 px-3 mt-5">
-            <span className="size-[25px] cursor-pointer overflow-hidden dark:text-gray-500/50 text-gray-700/70">
-              <FaWallet size="100%" />
-            </span>
-            <h4 className="font-medium text-lg dark:text-gray-300/90 text-gray-800">
-              Connected Wallets
-            </h4>
-          </div>
-          <div className="w-full h-auto grid grid-cols-2 md:grid-cols-4 grid-flow-row-dense gap-2 px-2">
-            {wallets.map((item) => {
-              return (
-                <div className="w-auto h-auto flex items-center">
-                  <WalletCard wallet={item} />
-                </div>
-              );
-            })}
-          </div>
+          {Object.values(selectedProviders).length > 0 && (
+            <>
+              <div className="w-full h-auto flex items-center mb-5 gap-2 px-3 mt-5">
+                <span className="size-[25px] cursor-pointer overflow-hidden dark:text-gray-500/50 text-gray-700/70">
+                  <FaWallet size="100%" />
+                </span>
+                <h4 className="font-medium text-lg dark:text-gray-300/90 text-gray-800">
+                  Connected Wallets
+                </h4>
+              </div>
+              <div className="w-full h-auto grid grid-cols-2 md:grid-cols-4 grid-flow-row-dense gap-2 px-2">
+                {wallets.map((item) => {
+                  return (
+                    <div className="w-auto h-auto flex items-center">
+                      <WalletCard wallet={item} />
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
           {/* available  */}
           <div className="w-full h-auto flex items-center mb-5 gap-2 px-3 mt-5">
             <span className="size-[25px] cursor-pointer overflow-hidden dark:text-gray-500/50 text-gray-700/70">
@@ -49,7 +54,7 @@ const Wallets = () => {
               Available Wallets
             </h4>
           </div>
-          <div className="w-full h-fit flex flex-row items-center flex-nowrap overflow-x-scroll gap-2 px-3">
+          <div className="w-full h-fit flex flex-row items-center flex-nowrap overflow-x-scroll gap-2 px-3 scroll-ps">
             {available_providers.map((item) => {
               return (
                 <div className="w-auto h-auto flex items-center">

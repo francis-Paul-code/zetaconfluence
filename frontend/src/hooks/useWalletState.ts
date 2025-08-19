@@ -24,7 +24,13 @@ export const useWalletState = (providers: EIP6963ProviderDetail[]) => {
       );
       const state = await initializeWalletState(item);
       const balances =
-        state?.account && (await fetchWalletBalance(state?.account!))?.result;
+        state?.account &&
+        (
+          await fetchWalletBalance({
+            address: state?.account!,
+            chain: '0x' + state?.decimalChainId!.toString(16),
+          })
+        )?.result;
 
       if (state)
         _wallets[item?.info?.rdns] = {
@@ -93,6 +99,12 @@ export const useWalletState = (providers: EIP6963ProviderDetail[]) => {
         method: 'eth_chainId',
       })) as string;
 
+      console.log(
+        'checking chains',
+        currentChainId,
+        accounts,
+        provider.info.rdns
+      );
       return {
         decimalChainId: parseInt(currentChainId, 16),
         account: accounts && accounts.length ? accounts[0] : null,

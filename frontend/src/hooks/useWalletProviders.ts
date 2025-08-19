@@ -11,7 +11,12 @@ import {
  */
 export const useWalletProviders = () => {
   const [providers, setProviders] = useState<EIP6963ProviderDetail[]>([]);
-
+  const supportedMultiChainWallets = [
+    'xverse',
+    'cosmostation',
+    'trust',
+    'phantom',
+  ];
   // Handler for provider announcements
   const handleAnnounceProvider = useCallback(
     (provider: EIP6963ProviderDetail) => {
@@ -25,6 +30,22 @@ export const useWalletProviders = () => {
     },
     []
   );
+
+  useEffect(() => {
+    const nonEvmProviders = {
+      solana: [
+        window.solana, // Phantom
+        window.trustwallet?.solana, // Trust
+        window.cosmostation?.solana, // Cosmostation
+      ].filter(Boolean),
+
+      bitcoin: [
+        window.trustwallet?.bitcoin, // Trust
+        window.BitcoinProvider, // Xverse
+      ].filter(Boolean),
+    };
+  console.log('Non-EVM Providers:', nonEvmProviders, window);
+  }, []);
 
   // Initialize EIP-6963 provider discovery
   useEffect(() => {
@@ -52,4 +73,4 @@ export const useWalletProviders = () => {
   }, [handleAnnounceProvider]);
 
   return { providers };
-}; 
+};
