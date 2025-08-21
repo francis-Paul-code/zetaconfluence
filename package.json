@@ -39,7 +39,7 @@
     "eslint-plugin-simple-import-sort": "^10.0.0",
     "eslint-plugin-sort-keys-fix": "^1.1.2",
     "eslint-plugin-typescript-sort-keys": "^2.3.0",
-    "ethers": "^5.4.7",
+    "ethers": "^6.15.0",
     "hardhat": "^2.17.2",
     "hardhat-gas-reporter": "^1.0.8",
     "prettier": "^2.8.8",
@@ -49,13 +49,19 @@
     "typescript": ">=4.5.0"
   },
   "packageManager": "yarn@1.22.21+sha1.1959a18351b811cdeedbd484a8f86c3cc3bbaf72",
+  "resolutions": {
+    "chalk": "^4.1.2"
+  },
   "dependencies": {
+    "@chainlink/contracts": "^1.4.0",
     "@coral-xyz/anchor": "0.30.0",
+    "@openzeppelin/contracts": "^5.4.0",
+    "@openzeppelin/contracts-upgradeable": "^5.4.0",
     "@solana-developers/helpers": "^2.4.0",
     "@solana/spl-memo": "^0.2.5",
     "@solana/web3.js": "^1.95.8",
     "@zetachain/protocol-contracts": "13.0.0",
-    "@zetachain/toolkit": "^16.0.0",
+    "@zetachain/toolkit": "15.0.0",
     "zetachain": "6.0.1"
   }
 }

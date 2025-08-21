@@ -6,6 +6,9 @@ typechain
 typechain-types
 dependencies
 
+.remix/
+.deps/
+ignore
 # Hardhat files
 cache
 artifacts
