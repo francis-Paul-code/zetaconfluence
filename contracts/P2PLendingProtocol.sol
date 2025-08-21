@@ -24,6 +24,7 @@ contract P2PLendingProtocol is
     GatewayZEVM public immutable gatewayZEVM;
     uint256 public loanRequestCounter;
     uint256 public loanCounter;
+    uint256 public bidCounter;
 
     // =============== CONSTANTS ===============
 
@@ -34,6 +35,22 @@ contract P2PLendingProtocol is
     uint256 public constant MAX_LOAN_DURATION = 365 days;
     uint256 public constant MAX_LOAN_REQUEST_DURATION = 30 days;
     uint256 public constant LISTING_FEE_BPS = 50; // 0.5%
+    uint256 public constant MAX_BATCH_SIZE = 20;
+    uint256[] public _bids;
+    string[] public SUPPORTED_ACTIONS = [
+        "CREATE_LOAN_REQUEST",
+        "PLACE_LOAN_REQUEST_BID",
+        "RECOVER_BID_FUNDING",
+        "REPAY_LOAN",
+        "GET_SUPPORTED_ACTIONS",
+        "GET_SUPPORTED_ASSETS",
+
+        // ADMIN ACTIONS
+        "ADD_SUPPORTED_ASSETS",
+        "UPDATE_ASSET_PRICE",
+        "EMERGENCY_PAUSE",
+        "UNPAUSE"
+    ];
 
     error Unauthorized();
 
@@ -45,6 +62,9 @@ contract P2PLendingProtocol is
     mapping(address => ChainLinkPriceFeed) public chainLinkFeeds; // Chainlink price feeds for assets
     mapping(uint256 => EscrowInfo) public collateralEscrows; // Loan ID to collateral escrow info
     mapping(uint256 => Loan) public loans; // Loan ID to Loan details
+    mapping(uint256 => Bid) public bids;
+    mapping(address => uint256) public nonces;
+    mapping(uint256 => EscrowInfo) public fundingEscrows;
 
     // =============== VARIABLES ===============
 
@@ -85,6 +105,8 @@ contract P2PLendingProtocol is
         uint256 loanDuration;
         uint256 requestValidDays;
         uint256 listingFee;
+        uint256[] bids;
+        uint256 createdAt;
     }
 
     /**
@@ -137,6 +159,29 @@ contract P2PLendingProtocol is
         bool canWithdraw;
     }
 
+    struct MetaBid {
+        uint256 loanRequestId;
+        address lender;
+        uint128 amount;
+        uint64 interestRate;
+        address fundingAsset;
+        uint256 nonce;
+        uint64 deadline;
+    }
+
+    struct Bid {
+        uint256 id;
+        uint256 loanRequestId;
+        address lender;
+        uint128 amount; // Amount lender willing to provide
+        uint64 interestRate; // Interest rate lender wants (basis points)
+        address fundingAsset; // Asset lender has (ZRC20)
+        bool requiresSwap; // Whether lender asset needs swap to principal
+        BidStatus status;
+        uint256 createdAt;
+        uint128 gasDeducted; // Gas costs deducted from this bid
+    }
+
     // =============== ENUMS ===============
     enum LoanStatus {
         REQUESTED, // Loan request created, awaiting bids
@@ -146,6 +191,14 @@ contract P2PLendingProtocol is
         LIQUIDATED, // Collateral liquidated
         EXPIRED, // Request expired without funding
         CANCELLED // Cancelled by borrower
+    }
+
+    enum BidStatus {
+        PENDING, // Bid placed, awaiting loan execution
+        ACCEPTED, // Bid accepted and loan executed
+        REJECTED, // Bid rejected by borrower
+        EXPIRED, // Bid expired
+        WITHDRAWN // Bid withdrawn by lender
     }
 
     // =============== EVENTS ===============
@@ -181,6 +234,25 @@ contract P2PLendingProtocol is
         uint256 amount
     );
 
+    event BidPlaced(
+        uint256 indexed bidId, 
+        uint256 indexed loanRequestId, 
+        address indexed lender, 
+        uint256 amount, 
+        address fundingAsset,
+        uint256 interestRate
+    );
+    event BidBatchProcessed(uint256[] bidIds, uint256 successCount);
+    event BidFailed(
+        uint256 indexed loanId,
+        address indexed lender,
+        string reason
+    );
+    event FundingCollateralReleased(
+        uint256 indexed bidId,
+        address to,
+        uint256 amount
+    );
     // =============== MODIFIERS ===============
 
     modifier onlyBorrower(uint256 loanId) {
@@ -191,7 +263,12 @@ contract P2PLendingProtocol is
         _;
     }
 
-    modifier _onlyOwner(address initiator)  {
+    modifier onlyLender(uint256 BidId, address initiator) {
+        require(bids[BidId].lender == initiator, "Only lender can call this");
+        _;
+    }
+
+    modifier _onlyOwner(address initiator) {
         address _owner = owner();
         if (initiator != _owner) revert Unauthorized();
         _;
@@ -220,6 +297,7 @@ contract P2PLendingProtocol is
      * @param principalAsset the address
      */
     function _createLoanRequest(
+        address borrower,
         address principalAsset,
         address collateralAsset,
         uint256 principalAmount,
@@ -275,10 +353,11 @@ contract P2PLendingProtocol is
         require(msg.value >= listingFee, "Insufficient listing fee");
 
         // Create loan request record
+
         uint256 reqId = ++loanRequestCounter;
         loanRequests[reqId] = LoanRequest({
             id: reqId,
-            borrower: msg.sender,
+            borrower: borrower,
             principalAsset: principalAsset,
             collateralAsset: collateralAsset,
             principalAmount: principalAmount,
@@ -287,14 +366,16 @@ contract P2PLendingProtocol is
             maxInterestRate: maxInterestRate,
             loanDuration: loanDuration,
             requestValidDays: requestValidDays,
-            listingFee: listingFee
+            listingFee: listingFee,
+            createdAt:block.timestamp,
+            bids:_bids
         });
 
         // Lock collateral
-        _lockCollateral(reqId, msg.sender, collateralAsset, collateralAmount);
+        _lockCollateral(reqId, borrower, collateralAsset, collateralAmount);
         emit LoanRequested(
             reqId,
-            msg.sender,
+            borrower,
             principalAsset,
             principalAmount,
             collateralAmount,
@@ -327,7 +408,142 @@ contract P2PLendingProtocol is
 
         emit CollateralLocked(loanRequestId, collateralAsset, borrower, amount);
     }
-    
+
+    // =============== BIDDING SYSTEM ===============
+
+    /**
+     * @dev Place multiple bids using meta-transactions (gas-free for lenders)
+     * @param metaBids Array of meta-transaction bid data
+     */
+    function _placeBidBatch(MetaBid[] memory metaBids) internal whenNotPaused {
+        require(metaBids.length <= MAX_BATCH_SIZE, "Batch too large");
+
+        uint256[] memory successfulBids = new uint256[](metaBids.length);
+        uint256 successCount = 0;
+
+        for (uint256 i = 0; i < metaBids.length; i++) {
+            uint256 bidId = _processSingleBid(metaBids[i]);
+            if(bidId > 0 ){
+                successfulBids[successCount] = bidId;
+                successCount++;
+            }else{
+                emit BidFailed(metaBids[i].loanRequestId, metaBids[i].lender, "Bid Creation Failed");
+            }
+        }
+
+        // Resize successful bids array
+        uint256[] memory finalBids = new uint256[](successCount);
+        for (uint256 i = 0; i < successCount; i++) {
+            finalBids[i] = successfulBids[i];
+        }
+
+        emit BidBatchProcessed(finalBids, successCount);
+    }
+
+    /**
+     * @dev Process a single meta-transaction bid
+     */
+    function _processSingleBid(
+        MetaBid memory bid
+    ) internal returns (uint256) {
+        // Validate bid against loan
+        LoanRequest storage loanRequest = loanRequests[bid.loanRequestId];
+        require(
+            block.timestamp <= loanRequest.createdAt + loanRequest.requestValidDays * 1 days, // bug here
+            "Loan request expired"
+        );
+        require(
+            bid.interestRate <= loanRequest.maxInterestRate,
+            "Interest rate too high"
+        );
+        require(
+            bid.amount > 0 && bid.amount <= loanRequest.principalAmount,
+            "Invalid bid amount"
+        );
+        require(
+            supportedAssets[bid.fundingAsset],
+            "Funding asset not supported"
+        );
+
+        // Create bid record
+        uint256 bidId = ++bidCounter;
+        bids[bidId] = Bid({
+            id: bidId,
+            loanRequestId: bid.loanRequestId,
+            lender: bid.lender,
+            amount: bid.amount,
+            interestRate: bid.interestRate,
+            fundingAsset: bid.fundingAsset,
+            requiresSwap: bid.fundingAsset != loanRequest.principalAsset,
+            status: BidStatus.PENDING,
+            createdAt: block.timestamp,
+            gasDeducted: 0
+        });
+
+        // Add to loan Requests bids
+        loanRequests[bid.loanRequestId].bids.push(bidId);
+
+        // Lock lender funds
+        _lockFundingBid(bidId, bid.lender, bid.fundingAsset, bid.amount);
+
+        // Increment nonce
+        nonces[bid.lender]++;
+
+        emit BidPlaced(
+            bidId,
+            bid.loanRequestId,
+            bid.lender,
+            bid.amount,
+            bid.fundingAsset,
+            bid.interestRate
+        );
+
+        return bidId;
+    }
+
+    /**
+     * @dev Lock funds for a bidding lender
+     */
+    function _lockFundingBid(
+        uint256 bidId,
+        address lender,
+        address fundingAsset,
+        uint256 amount
+    ) internal {
+        // Create escrow record
+        fundingEscrows[bidId] = EscrowInfo({
+            asset: fundingAsset,
+            escrowType: "funding",
+            owner: lender,
+            initiatorID: bidId,
+            amount: uint128(amount),
+            isLocked: true,
+            canWithdraw: true
+        });
+    }
+    /**
+     * @dev Release funding assets back to lender after rejection or discommitment
+     * @param bidId ID of the bid to release funding for
+     * @param to Address to send the funds to
+     */
+    function _releaseFundingCollateral(
+        address initiator,
+        uint256 bidId,
+        address to
+    ) internal whenNotPaused onlyLender(bidId, initiator) {
+        EscrowInfo storage escrow = fundingEscrows[bidId];
+        require(escrow.isLocked, "Funding not locked");
+        require(escrow.canWithdraw, "Cannot withdraw yet");
+        require(escrow.owner == initiator, "Only owner can release");
+        uint256 gasFee = escrow.amount / 100; // Deduct 1% for gas fee
+        // Transfer funds to recipient
+        IZRC20(escrow.asset).approve(address(gatewayZEVM), gasFee); // currently making this gas free
+
+        IZRC20(escrow.asset).transfer(to, escrow.amount - gasFee);
+        escrow.isLocked = false;
+
+        emit FundingCollateralReleased(bidId, to, escrow.amount);
+    }
 
     // =============== UTILITY FUNCTIONS ===============
 
@@ -337,7 +553,7 @@ contract P2PLendingProtocol is
     function getAssetValueUSD(
         address asset,
         uint256 amount
-    ) public view returns (uint256) {
+    ) internal view returns (uint256) {
         uint256 price = assetPrices[asset];
         require(price > 0, "Asset price not available");
 
@@ -404,9 +620,9 @@ contract P2PLendingProtocol is
      * @param asset ZRC20 token address
      * @return ChainLinkPriceFeed struct containing the price feed details
      */
-    function getChainLinkPriceFeed(
+    function _getChainLinkPriceFeed(
         address asset
-    ) external view returns (ChainLinkPriceFeed memory) {
+    ) internal view returns (ChainLinkPriceFeed memory) {
         require(supportedAssets[asset], "Asset not supported");
         return chainLinkFeeds[asset];
     }
@@ -415,7 +631,7 @@ contract P2PLendingProtocol is
      * @dev Get the list of supported assets
      * @return Array of supported asset addresses
      */
-    function getSupportedAssets() external view returns (address[] memory) {
+    function _getSupportedAssets() internal view returns (address[] memory) {
         return supportedAssetsList;
     }
 
@@ -427,13 +643,13 @@ contract P2PLendingProtocol is
         uint256 amount,
         bytes calldata message
     ) external override onlyGateway {
-        (
-            string memory action,
-            address initiator,
-            bytes memory data
-        ) = abi.decode(message, (string, address, bytes));
+        (string memory action, address initiator, bytes memory data) = abi
+            .decode(message, (string, address, bytes));
 
-        if (keccak256(bytes(action)) == keccak256("CREATE_LOAN_REQUEST")) {
+        bytes32 actionHash = keccak256(bytes(action));
+
+        if (actionHash == keccak256("CREATE_LOAN_REQUEST")) {
+            // Create a new loan request
             (
                 address principalAsset,
                 uint256 principalAmount,
@@ -441,10 +657,13 @@ contract P2PLendingProtocol is
                 uint256 maxInterestRate,
                 uint256 loanDuration,
                 uint256 requestValidDays
-            ) = abi.decode(data, (address, uint256,address,uint256,uint256,uint256));
+            ) = abi.decode(
+                    data,
+                    (address, uint256, address, uint256, uint256, uint256)
+                );
 
-            //create loan request and lock collateral
             _createLoanRequest(
+                initiator,
                 principalAsset,
                 zrc20,
                 principalAmount,
@@ -454,11 +673,20 @@ contract P2PLendingProtocol is
                 loanDuration,
                 requestValidDays
             );
-        } else if (keccak256(bytes(action)) == keccak256("REPAY_LOAN")) {
+        } else if (actionHash == keccak256("PLACE_LOAN_REQUEST_BID")) {
+            // Place a bid on a loan request
+            MetaBid[] memory metaBids = abi.decode(data, (MetaBid[]));
+            _placeBidBatch(metaBids);
+        } else if (actionHash == keccak256("RECOVER_BID_FUNDING")) {
+            // Recover funding collateral from a bid
+            uint256 bidId = abi.decode(data, (uint256));
+            _releaseFundingCollateral(initiator, bidId, initiator);
+        } else if (actionHash == keccak256("REPAY_LOAN")) {
+            // Repay a loan
             uint256 loanId = abi.decode(data, (uint256));
-        } else if (
-            keccak256(bytes(action)) == keccak256("ADD_SUPPORTED_ASSETS")
-        ) {
+            // _repayLoan(loanId, initiator);
+        } else if (actionHash == keccak256("ADD_SUPPORTED_ASSETS")) {
+            // Add supported assets
             (address[] memory assets, address[] memory aggregators) = abi
                 .decode(data, (address[], address[]));
             _addSupportedAssets(initiator, assets, aggregators);
@@ -469,20 +697,32 @@ contract P2PLendingProtocol is
                     block.timestamp
                 );
             }
-        } else if (
-            keccak256(bytes(action)) == keccak256("UPDATE_ASSET_PRICE")
-        ) {
+        } else if (actionHash == keccak256("UPDATE_ASSET_PRICE")) {
+            // Update asset prices
             _updateAssetPrice(initiator);
-        } else if (keccak256(bytes(action)) == keccak256("EMERGENCY_PAUSE")) {
-            string memory reason = string(data);
-            _emergencyPause(initiator, reason);
-        } else if (keccak256(bytes(action)) == keccak256("UNPAUSE")) {
+        } else if (actionHash == keccak256("EMERGENCY_PAUSE")) {
+            // Emergency pause the protocol
+            _emergencyPause(initiator, string(data));
+        } else if (actionHash == keccak256("UNPAUSE")) {
+            // Unpause the protocol
             __unpause(initiator);
+        } else if (actionHash == keccak256("GET_SUPPORTED_ASSETS")) {
+            // Get supported assets
+            address[] memory assets = _getSupportedAssets();
+            // Encode the response
+            bytes memory response = abi.encode(assets);
+            // Send the response back to the caller
+            // systemContract.sendResponse(context, response);
+        } else if (actionHash == keccak256("GET_SUPPORTED_ACTIONS")) {
+            // Get supported actions
+            bytes memory response = abi.encode(SUPPORTED_ACTIONS);
+            // Send the response back to the caller
+            // systemContract.sendResponse(context, response);
         } else {
+            // Handle other actions
             revert("Invalid action");
         }
     }
-
 
     // ==================== ADMIN FUNCTIONS ====================
 
