@@ -36,6 +36,7 @@ contract P2PLendingProtocol is
     uint256 public constant MAX_LOAN_REQUEST_DURATION = 30 days;
     uint256 public constant LISTING_FEE_BPS = 50; // 0.5%
     uint256 public constant MAX_BATCH_SIZE = 20;
+    uint256 public constant RETRY_ATTEMPTS = 3;
     uint256[] public _bids;
     string[] public SUPPORTED_ACTIONS = [
         "CREATE_LOAN_REQUEST",
@@ -65,6 +66,9 @@ contract P2PLendingProtocol is
     mapping(uint256 => Bid) public bids;
     mapping(address => uint256) public nonces;
     mapping(uint256 => EscrowInfo) public fundingEscrows;
+    mapping(uint256 => uint256) public lastPriceCheck;
+    mapping(uint256 => uint256) public retryAttempts;
+    mapping(uint256 => uint256) public nextRetryTime;
 
     // =============== VARIABLES ===============
 
@@ -100,13 +104,15 @@ contract P2PLendingProtocol is
         address collateralAsset;
         uint256 principalAmount;
         uint256 collateralAmount;
-        address receivingWallet;
+        bytes receivingWallet;
         uint256 maxInterestRate;
         uint256 loanDuration;
         uint256 requestValidDays;
         uint256 listingFee;
         uint256[] bids;
         uint256 createdAt;
+        LoanRequestStatus status;
+        bool exists;
     }
 
     /**
@@ -118,7 +124,6 @@ contract P2PLendingProtocol is
      * @param principalAmount Amount the borrower wants.
      * @param collateralAmount Amount of collateral locked.
      * @param receivingWallet Where the borrower wants the principal sent.
-     * @param maxInterestRate Maximum interest rate acceptable (basis points).
      * @param loanDuration Loan duration in seconds.
      * @param repaymentDeadline When the loan must be repaid (set when activated).
      * @param requestExpiry When the loan request expires.
@@ -136,17 +141,16 @@ contract P2PLendingProtocol is
         address collateralAsset;
         uint256 principalAmount;
         uint256 collateralAmount;
-        address receivingWallet;
-        uint256 maxInterestRate;
+        bytes receivingWallet;
         uint256 loanDuration;
+        uint64 interestRate;
         uint256 repaymentDeadline;
-        uint256 requestExpiry;
-        uint256 listingFee;
         LoanStatus status;
         uint256 createdAt;
-        LoanRequest loanRequest;
-        uint256 activatedAt;
-        uint256 totalRepaid;
+        uint256 loanRequestID;
+        uint256[] bids;
+        uint128 totalRepaid;
+        bool exists;
     }
 
     struct EscrowInfo {
@@ -157,6 +161,7 @@ contract P2PLendingProtocol is
         uint256 initiatorID; // ID of the initiator (loan request ID or Bid ID)
         bool isLocked;
         bool canWithdraw;
+        bool exists;
     }
 
     struct MetaBid {
@@ -167,30 +172,39 @@ contract P2PLendingProtocol is
         address fundingAsset;
         uint256 nonce;
         uint64 deadline;
+        bool exists;
     }
 
     struct Bid {
         uint256 id;
         uint256 loanRequestId;
         address lender;
+        // uint256 escrowID; // ID to the Bid's escrow funding walet
         uint128 amount; // Amount lender willing to provide
+        uint128 amountFilled; // Amount that was actually filled from the lender's bid
         uint64 interestRate; // Interest rate lender wants (basis points)
         address fundingAsset; // Asset lender has (ZRC20)
         bool requiresSwap; // Whether lender asset needs swap to principal
         BidStatus status;
         uint256 createdAt;
         uint128 gasDeducted; // Gas costs deducted from this bid
+        bool exists;
     }
 
     // =============== ENUMS ===============
     enum LoanStatus {
-        REQUESTED, // Loan request created, awaiting bids
-        FUNDED, // 100% funded, ready for execution
         ACTIVE, // Loan active, borrower received funds
         COMPLETED, // Loan fully repaid
         LIQUIDATED, // Collateral liquidated
         EXPIRED, // Request expired without funding
         CANCELLED // Cancelled by borrower
+    }
+
+     enum LoanRequestStatus {
+        REQUESTED, // Loan request created, awaiting bids
+        FUNDED, // 100% funded, ready for execution
+        EXPIRED, // Request expired without funding
+        CANCELLED // Cancelled by borrower or by 
     }
 
     enum BidStatus {
@@ -250,14 +264,26 @@ contract P2PLendingProtocol is
     );
     event FundingCollateralReleased(
         uint256 indexed bidId,
-        address to,
+        bytes to,
         uint256 amount
     );
+
+    event LoanFunded(uint256 indexed loanId, uint256 totalAmount, uint256 bidCount);
+    event LoanActivated(uint256 indexed loanId, uint256 activatedAt, uint256 deadline);
+   
+    event WithdrawalInitiated(
+        address zrc20Token,
+        uint256 amount,
+        bytes reciever
+    );
+    event LoanRetryScheduled(uint256 indexed loanId, uint256 nextAttempt);
+    
+
     // =============== MODIFIERS ===============
 
-    modifier onlyBorrower(uint256 loanId) {
+    modifier onlyBorrower(uint256 loanRequestId, address initiator) {
         require(
-            loans[loanId].borrower == msg.sender,
+            loanRequests[loanRequestId].borrower == initiator,
             "Only borrower can call this"
         );
         _;
@@ -276,6 +302,11 @@ contract P2PLendingProtocol is
 
     modifier onlyGateway() {
         if (msg.sender != address(gatewayZEVM)) revert Unauthorized();
+        _;
+    }
+
+    modifier validLoanRequest(uint256 loanRequestId){
+        require(loanRequests[loanRequestId].exists,"Only a valid loan Request can be executed");
         _;
     }
 
@@ -302,7 +333,7 @@ contract P2PLendingProtocol is
         address collateralAsset,
         uint256 principalAmount,
         uint256 collateralAmount,
-        address receivingWallet,
+        bytes memory receivingWallet,
         uint256 maxInterestRate,
         uint256 loanDuration,
         uint256 requestValidDays
@@ -329,7 +360,6 @@ contract P2PLendingProtocol is
                 requestValidDays <= MAX_LOAN_REQUEST_DURATION,
             "Invalid request validity"
         );
-        require(receivingWallet != address(0), "Invalid receiving wallet");
 
         // Calculate collateralization ratio
         uint256 collateralValueUSD = getAssetValueUSD(
@@ -368,7 +398,9 @@ contract P2PLendingProtocol is
             requestValidDays: requestValidDays,
             listingFee: listingFee,
             createdAt:block.timestamp,
-            bids:_bids
+            bids:_bids,
+            exists:true,
+            status: LoanRequestStatus.REQUESTED
         });
 
         // Lock collateral
@@ -403,7 +435,8 @@ contract P2PLendingProtocol is
             owner: borrower,
             initiatorID: loanRequestId,
             isLocked: true,
-            canWithdraw: false
+            canWithdraw: false,
+            exists:true
         });
 
         emit CollateralLocked(loanRequestId, collateralAsset, borrower, amount);
@@ -472,12 +505,14 @@ contract P2PLendingProtocol is
             loanRequestId: bid.loanRequestId,
             lender: bid.lender,
             amount: bid.amount,
+            amountFilled:0,
             interestRate: bid.interestRate,
             fundingAsset: bid.fundingAsset,
             requiresSwap: bid.fundingAsset != loanRequest.principalAsset,
             status: BidStatus.PENDING,
             createdAt: block.timestamp,
-            gasDeducted: 0
+            gasDeducted: 0,
+            exists:true
         });
 
         // Add to loan Requests bids
@@ -518,7 +553,8 @@ contract P2PLendingProtocol is
             initiatorID: bidId,
             amount: uint128(amount),
             isLocked: true,
-            canWithdraw: true
+            canWithdraw: true,
+            exists:true
         });
     }
     /**
@@ -529,23 +565,254 @@ contract P2PLendingProtocol is
     function _releaseFundingCollateral(
         address initiator,
         uint256 bidId,
-        address to
+        bytes memory to
     ) internal whenNotPaused onlyLender(bidId, initiator) {
         EscrowInfo storage escrow = fundingEscrows[bidId];
         require(escrow.isLocked, "Funding not locked");
         require(escrow.canWithdraw, "Cannot withdraw yet");
         require(escrow.owner == initiator, "Only owner can release");
-        uint256 gasFee = escrow.amount / 100; // Deduct 1% for gas fee
-        // Transfer funds to recipient
-        IZRC20(escrow.asset).approve(address(gatewayZEVM), gasFee); // currently making this gas free
-
-        IZRC20(escrow.asset).transfer(to, escrow.amount - gasFee);
+       
+       bool withdraw = _withdrawTokens(to, escrow.amount, escrow.asset);
+       
+       if(withdraw){
+            emit FundingCollateralReleased(bidId, to, escrow.amount);
+       } else {
+            revert("Funding release failed");
+       }
         escrow.isLocked = false;
 
-        emit FundingCollateralReleased(bidId, to, escrow.amount);
+        
+    }
+
+    // ==================== LOAN EXECUTION ====================
+    
+    /**
+     * @dev Execute loan by accepting specific bids (must total 100% of principal)
+     * @param initiator address of call initiator
+     * @param loanRequestId ID of the loan to execute
+     * @param acceptedBids Array of bid IDs to accept
+     */
+    function executeLoan(
+        address initiator,
+        uint256 loanRequestId,
+        uint256[] calldata acceptedBids
+    ) internal nonReentrant whenNotPaused validLoanRequest(loanRequestId) onlyBorrower(loanRequestId, initiator) {
+        LoanRequest storage loanRequest = loanRequests[loanRequestId];
+        require(block.timestamp <= loanRequest.createdAt + loanRequest.requestValidDays * 1 days, "Loan request expired");
+        require(acceptedBids.length > 0, "No bids provided");
+        
+        // Validate total funding
+        uint256 totalFunding = 0;
+        uint256 weightedInterestRate = 0;
+        
+        for (uint256 i = 0; i < acceptedBids.length; i++) {
+            Bid storage bid = bids[acceptedBids[i]];
+            require(bid.loanRequestId == loanRequestId, "Bid not for this loan");
+            require(bid.status == BidStatus.PENDING, "Invalid bid status");
+            
+           if(totalFunding + bid.amount > loanRequest.principalAmount){ 
+                uint256 balance = (loanRequest.principalAmount - totalFunding);
+                totalFunding += balance;
+                bids[acceptedBids[i]].amountFilled = uint128(balance); 
+                fundingEscrows[acceptedBids[i]].amount -= uint128(balance); // update the escrow wallet balances
+                weightedInterestRate += (balance * bid.interestRate );
+
+           }else {
+                totalFunding += bid.amount;
+                bids[acceptedBids[i]].amountFilled = bid.amount;
+                fundingEscrows[acceptedBids[i]].amount -= bid.amount; // update the escrow wallet balances
+                weightedInterestRate += (bid.amount * bid.interestRate);
+            }
+            
+            fundingEscrows[acceptedBids[i]].canWithdraw = false; // protect against withdraw attacks
+        }
+        
+        weightedInterestRate = weightedInterestRate / totalFunding;
+        
+        // Execute all operations atomically
+        bool success = _executeAtomicLoanTransfer(loanRequestId, acceptedBids); // very important method
+        
+        if (success) {
+            uint256 loanId = ++loanCounter;
+            loans[loanId] = Loan({
+                id: loanId,
+                borrower: loanRequest.borrower,
+                principalAmount: loanRequest.principalAmount,
+                interestRate: uint64(weightedInterestRate),
+                loanDuration: loanRequest.loanDuration,
+                status: LoanStatus.ACTIVE,
+                collateralAsset: loanRequest.collateralAsset,
+                collateralAmount: loanRequest.collateralAmount,
+                principalAsset: loanRequest.principalAsset,
+                receivingWallet: loanRequest.receivingWallet,
+                loanRequestID: loanRequest.id,
+                bids: acceptedBids,
+                totalRepaid: 0,
+                createdAt: block.timestamp,
+                repaymentDeadline: block.timestamp + loanRequest.loanDuration * 1 days,
+                exists:true
+            });
+
+            // Mark accepted bids
+            for (uint256 i = 0; i < acceptedBids.length; i++) {
+                bids[acceptedBids[i]].status = BidStatus.ACCEPTED;
+            }
+            
+            emit LoanFunded(loanId, totalFunding, acceptedBids.length);
+            emit LoanActivated(loanId, block.timestamp, loans[loanId].repaymentDeadline);
+            
+            // Start monitoring for liquidation
+            lastPriceCheck[loanId] = block.timestamp;
+            
+        } else {
+            // Schedule retry
+            _scheduleRetryExecution(loanRequestId, acceptedBids);
+        }
+    }
+    
+    /**
+     * @dev Execute atomic loan transfer with potential swaps
+     */
+    function _executeAtomicLoanTransfer(
+        uint256 loanRequestId,
+        uint256[] memory acceptedBids
+    ) internal returns (bool) {
+        LoanRequest storage loanreq = loanRequests[loanRequestId];
+
+         // Process swaps if needed - disable this on front-end for now
+            // for (uint256 i = 0; i < acceptedBids.length; i++) {
+            //     Bid storage bid = bids[acceptedBids[i]];
+            //     if (bid.requiresSwap) {
+            //         bool swapSuccess = _executeSwap(acceptedBids[i], bid.fundingAsset, loanreq.principalAsset, bid.amountFilled);
+            //         require(swapSuccess, "Swap failed");
+            //     }
+            // }
+       bool transfered =  _transferToBorrower(loanRequestId);
+       require(transfered,"Transfer To Borrower Failed" );
+        
+    }
+    
+    /**
+     * @dev Execute swap from funding asset to principal asset this is not currently available ill work on it last
+     */
+    // function _executeSwap(
+    //     uint256 bidId,
+    //     address tokenIn,
+    //     address tokenOut,
+    //     uint256 amountIn
+    // ) internal returns (bool) {
+    //     // This would integrate with ZetaChain's built-in DEX or external DEX
+    //     // For now, simplified implementation
+        
+    //     SwapParams memory params = SwapParams({
+    //         tokenIn: tokenIn,
+    //         tokenOut: tokenOut,
+    //         amountIn: amountIn,
+    //         minAmountOut: _calculateMinAmountOut(tokenIn, tokenOut, amountIn),
+    //         slippageBps: 500 // 5% default slippage
+    //     });
+        
+    //     // Execute swap through ZetaChain's swap functionality
+    //     // This is a simplified version - in production, you'd use actual DEX integration
+    //     try systemContract.uniswapv2PairFor(IZRC20(tokenIn), IZRC20(tokenOut)) returns (address pair) {
+    //         if (pair != address(0)) {
+    //             // Execute swap logic here
+    //             return true;
+    //         }
+    //     } catch {
+    //         return false;
+    //     }
+        
+    //     return false;
+    // }
+    
+    /**
+     * @dev Transfer funds to borrower's receiving wallet
+     */
+    function _transferToBorrower(
+        uint256 loanRequestId
+    ) internal returns (bool) {
+        LoanRequest storage loanreq = loanRequests[loanRequestId];
+        uint256 totalAmount = loanreq.principalAmount;
+        
+        bool withdraw = _withdrawTokens(loanreq.receivingWallet, totalAmount, loanreq.principalAsset);
+        require(withdraw, "Withdraw Failed");
+        return withdraw;
+    }
+
+     /**
+     * @dev Schedule retry execution for failed loan
+     */
+    function _scheduleRetryExecution(uint256 loanRequestId, uint256[] memory acceptedBids) internal {
+        uint256 attempts = retryAttempts[loanRequestId];
+        
+        if (attempts >= RETRY_ATTEMPTS) {
+            // Mark loan as failed and return funds
+            _cancelLoanAndReturnFunds(loanRequestId, acceptedBids);
+            return;
+        }
+        
+        retryAttempts[loanRequestId] = attempts + 1;
+        nextRetryTime[loanRequestId] = block.timestamp + (1 hours * (2 ** attempts)); 
+        
+        emit LoanRetryScheduled(loanRequestId, nextRetryTime[loanRequestId]);
+    }
+
+    /**
+     * @dev Cancel loan and return all funds
+     */
+    function _cancelLoanAndReturnFunds(uint256 loanRequestId, uint256[] memory acceptedBids) internal {
+        LoanRequest storage loanreq = loanRequests[loanRequestId];
+        
+        // Return collateral to borrower
+        EscrowInfo storage collateralEscrow = collateralEscrows[loanRequestId];
+
+        collateralEscrow.canWithdraw = true;
+        
+        for (uint256 i = 0; i < acceptedBids.length; i++) {
+            Bid storage bid = bids[acceptedBids[i]];
+            EscrowInfo storage fundingEscrow = fundingEscrows[acceptedBids[i]];
+            fundingEscrow.canWithdraw = true; // allow user to request for withdraw
+            fundingEscrow.amount += bid.amountFilled; // return escrow balance to before loan execution 
+        }
+
+        loanreq.status = LoanRequestStatus.CANCELLED;
     }
 
     // =============== UTILITY FUNCTIONS ===============
+
+     function _withdrawTokens(
+        bytes memory receiver,
+        uint256 amount,
+        address zrc20Token
+    ) private returns (bool) {
+
+        (address gasZRC20, uint256 gasFee) = IZRC20(zrc20Token).withdrawGasFee();
+        
+        IZRC20(zrc20Token).approve(address(gatewayZEVM), amount - gasFee);
+        
+        RevertOptions memory revertOptions = RevertOptions({
+            revertAddress: address(this),
+            callOnRevert: true,
+            abortAddress: address(0),
+            revertMessage: bytes(""),
+            onRevertGasLimit: 300000
+        });
+        
+       try gatewayZEVM.withdraw(
+            receiver,
+            amount,
+            zrc20Token,
+            revertOptions
+        ){
+            return true;
+        }catch {
+            return false;
+        }
+        
+        emit WithdrawalInitiated(zrc20Token, amount, receiver);
+    }
+
 
     /**
      * @dev Get USD value of an asset amount
@@ -653,13 +920,13 @@ contract P2PLendingProtocol is
             (
                 address principalAsset,
                 uint256 principalAmount,
-                address receivingWallet,
+                bytes memory receivingWallet,
                 uint256 maxInterestRate,
                 uint256 loanDuration,
                 uint256 requestValidDays
             ) = abi.decode(
                     data,
-                    (address, uint256, address, uint256, uint256, uint256)
+                    (address, uint256, bytes, uint256, uint256, uint256)
                 );
 
             _createLoanRequest(
@@ -680,7 +947,8 @@ contract P2PLendingProtocol is
         } else if (actionHash == keccak256("RECOVER_BID_FUNDING")) {
             // Recover funding collateral from a bid
             uint256 bidId = abi.decode(data, (uint256));
-            _releaseFundingCollateral(initiator, bidId, initiator);
+            bytes memory bytesInitiator = abi.encodePacked(initiator);
+            _releaseFundingCollateral(initiator, bidId, bytesInitiator);
         } else if (actionHash == keccak256("REPAY_LOAN")) {
             // Repay a loan
             uint256 loanId = abi.decode(data, (uint256));
