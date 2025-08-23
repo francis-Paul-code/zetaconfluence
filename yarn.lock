@@ -3307,6 +3307,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@pythnetwork/pyth-sdk-solidity@npm:^4.2.0":
+  version: 4.2.0
+  resolution: "@pythnetwork/pyth-sdk-solidity@npm:4.2.0"
+  checksum: 93d4e4ffad41e3562a68f23e1ad05a9951c8200ee83a5ed10a8eb011c576c16960767876eff163bb109b5bf7fb05a6cd04b6b701a2c44e91304e13551edc8b57
+  languageName: node
+  linkType: hard
+
 "@react-native-async-storage/async-storage@npm:^1.17.7":
   version: 1.24.0
   resolution: "@react-native-async-storage/async-storage@npm:1.24.0"
@@ -14274,6 +14281,7 @@ __metadata:
     "@nomiclabs/hardhat-etherscan": ^3.0.0
     "@openzeppelin/contracts": ^5.4.0
     "@openzeppelin/contracts-upgradeable": ^5.4.0
+    "@pythnetwork/pyth-sdk-solidity": ^4.2.0
     "@solana-developers/helpers": ^2.4.0
     "@solana/spl-memo": ^0.2.5
     "@solana/web3.js": ^1.95.8
