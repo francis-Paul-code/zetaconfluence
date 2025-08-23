@@ -11,10 +11,11 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
-import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import {RevertContext, RevertOptions} from "@zetachain/protocol-contracts/contracts/Revert.sol";
 import {UniversalContract} from "@zetachain/protocol-contracts/contracts/zevm/interfaces/UniversalContract.sol";
-
+import "@pythnetwork/pyth-sdk-solidity/IPyth.sol";
+import {PythStructs} from "@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
+import {PythUtils} from "@pythnetwork/pyth-sdk-solidity/PythUtils.sol";
 // UniversalContract,
 contract P2PLendingProtocol is
     UniversalContract,
@@ -26,6 +27,7 @@ contract P2PLendingProtocol is
     // =============== CORE STATE VARIABLES ===============
 
     SystemContract public immutable systemContract;
+    IPyth public pyth;
     GatewayZEVM public immutable gatewayZEVM;
     address public immutable uniswapRouter;
     uint256 public loanRequestCounter;
@@ -52,8 +54,6 @@ contract P2PLendingProtocol is
         "EXECUTE_LOAN",
         "REPAY_LOAN",
         "RECOVER_LOAN_COLLATERAL",
-        "GET_SUPPORTED_ACTIONS",
-        "GET_SUPPORTED_ASSETS",
         // ADMIN ACTIONS
         "ADD_SUPPORTED_ASSETS",
         "UPDATE_ASSET_PRICE",
@@ -66,9 +66,9 @@ contract P2PLendingProtocol is
     // =============== MAPPINGS ===============
 
     mapping(address => bool) public supportedAssets; // ZRC20 asset support
-    mapping(uint256 => LoanRequest) public loanRequests; // Loan Request ID to Loan Request details
+    mapping(uint256 => LoanRequest) private loanRequests; // Loan Request ID to Loan Request details
     mapping(address => uint256) public assetPrices; // Asset prices in USD (18 decimals)
-    mapping(address => ChainLinkPriceFeed) public chainLinkFeeds; // Chainlink price feeds for assets
+    mapping(address => bytes32) public pythPriceIds;
     mapping(uint256 => EscrowInfo) public collateralEscrows; // Loan ID to collateral escrow info
     mapping(uint256 => Loan) public loans; // Loan ID to Loan details
     mapping(uint256 => Bid) public bids;
@@ -78,7 +78,6 @@ contract P2PLendingProtocol is
     mapping(uint256 => uint256) public retryAttempts;
     mapping(uint256 => uint256) public nextRetryTime;
     mapping(uint256 => uint256) private activeLoanIndex; // loanId -> index in activeLoanIds
-
     mapping(address => User) private users; // user address => all user information
 
     // =============== VARIABLES ===============
@@ -96,27 +95,7 @@ contract P2PLendingProtocol is
         uint256[] acceptedBids;
         bool exists;
     }
-    struct ChainLinkPriceFeed {
-        AggregatorV3Interface priceFeed;
-        uint8 decimals; // Number of decimals in the price feed
-        uint64 lastUpdated; // Timestamp of the last price update
-        uint128 lastPrice; // Last price fetched from the Chainlink feed
-    }
 
-    /**
-     * @dev A loan request is where a borrowers submits intent to acquire a loan, this sets the initial step for the loan funding auction to begin. This locks the collateral and the listing fee is unrefundable.
-     * @param id Unique identifier for the loan request.
-     * @param borrower Address of the borrower.
-     * @param principalAsset Asset the borrower wants (ZRC20).
-     * @param collateralAsset Asset the borrower provides as collateral (ZRC20).
-     * @param principalAmount Amount the borrower wants.
-     * @param collateralAmount Amount of collateral locked.
-     * @param receivingWallet Where the borrower wants the principal sent.
-     * @param maxInterestRate Maximum interest rate acceptable (basis points).
-     * @param loanDuration Loan duration in days.
-     * @param requestValidDays loan request validity in days.
-     * @param listingFee Protocol fee paid by borrower.
-     */
     struct LoanRequest {
         uint256 id;
         address borrower;
@@ -136,25 +115,6 @@ contract P2PLendingProtocol is
         bool exists;
     }
 
-    /**
-     * @dev A loan is created when a borrower accepts the funding offers available from creditors
-     * @param id Unique identifier for the loan.
-     * @param borrower Address of the borrower.
-     * @param principalAsset Asset the borrower wants (ZRC20).
-     * @param collateralAsset Asset the borrower provides as collateral (ZRC20).
-     * @param principalAmount Amount the borrower wants.
-     * @param collateralAmount Amount of collateral locked.
-     * @param receivingWallet Where the borrower wants the principal sent.
-     * @param loanDuration Loan duration in seconds.
-     * @param repaymentDeadline When the loan must be repaid (set when activated).
-     * @param requestExpiry When the loan request expires.
-     * @param listingFee Protocol fee paid by borrower.
-     * @param status Current status of the loan.
-     * @param createdAt Timestamp when the loan was created.
-     * @param activatedAt Timestamp when the loan was activated.
-     * @param totalRepaid Total amount repaid so far.
-     *@param loanRequest The request that was filled to create the loan
-     */
     struct Loan {
         uint256 id;
         address borrower;
@@ -258,11 +218,6 @@ contract P2PLendingProtocol is
         uint256 collateralAmount,
         address collateralAsset
     );
-    event ChainLinkPriceFeedAdded(
-        address indexed asset,
-        address aggregator,
-        uint256 timestamp
-    );
 
     event CollateralLocked(
         uint256 indexed loanId,
@@ -304,7 +259,8 @@ contract P2PLendingProtocol is
     event LoanActivated(
         uint256 indexed loanId,
         uint256 activatedAt,
-        uint256 deadline
+        uint256 deadline,
+        address borrower
     );
     event LoanLiquidated(
         uint256 indexed loanId,
@@ -323,7 +279,11 @@ contract P2PLendingProtocol is
         uint256 amount,
         uint256 remainingDebt
     );
-    event LoanCompleted(uint256 indexed loanId, uint256 completedAt);
+    event LoanCompleted(
+        uint256 indexed loanId,
+        address borrower,
+        uint256 completedAt
+    );
 
     // =============== MODIFIERS ===============
 
@@ -381,11 +341,13 @@ contract P2PLendingProtocol is
         address initialOwner,
         address _systemContract,
         address payable _gatewayZEVM,
-        address payable _uniswapRouter
+        address payable _uniswapRouter,
+        address pythContractZEVM
     ) Ownable(initialOwner) EIP712("P2PLendingProtocol", "1") {
         systemContract = SystemContract(_systemContract);
         gatewayZEVM = GatewayZEVM(_gatewayZEVM);
         uniswapRouter = _uniswapRouter;
+        pyth = IPyth(pythContractZEVM);
     }
 
     // =============== LOAN REQUEST ===============
@@ -735,7 +697,6 @@ contract P2PLendingProtocol is
         );
         require(acceptedBids.length > 0, "No bids provided");
 
-        // Validate total funding
         uint256 totalFunding = 0;
         uint256 weightedInterestRate = 0;
 
@@ -768,14 +729,12 @@ contract P2PLendingProtocol is
 
             // currently after filling lps cant remove their money, should allow this later but only if the amount withdrawn is less that the balance of the escrow, balance = amount - amountFilled
 
-            
             users[bid.lender].acceptedBids.push(acceptedBids[i]);
             fundingEscrows[acceptedBids[i]].canWithdraw = false; // protect against withdraw attacks
         }
 
         weightedInterestRate = weightedInterestRate / totalFunding;
 
-        // Execute all operations atomically
         bool success = _executeAtomicLoanTransfer(loanRequestId, acceptedBids); // very important method
 
         if (success) {
@@ -801,13 +760,13 @@ contract P2PLendingProtocol is
                 exists: true
             });
 
-            if(users[initiator].exists){
-                users[initiator].loans.push(loanId)
-            }else{
-                User storage u = users[intiator];
+            if (users[initiator].exists) {
+                users[initiator].loans.push(loanId);
+            } else {
+                User storage u = users[initiator];
                 u.loans.push(loanId);
                 u.exists = true;
-                u.userAddress = initiator
+                u.userAddress = initiator;
             }
 
             activeLoanIds.push(loanId);
@@ -815,7 +774,6 @@ contract P2PLendingProtocol is
             activeLoanIndex[loanId] = index;
 
             loanRequests[loanRequest.id].loanID = loanId;
-            // Mark accepted bids
             for (uint256 i = 0; i < acceptedBids.length; i++) {
                 bids[acceptedBids[i]].status = BidStatus.ACCEPTED;
             }
@@ -824,10 +782,10 @@ contract P2PLendingProtocol is
             emit LoanActivated(
                 loanId,
                 block.timestamp,
-                loans[loanId].repaymentDeadline
+                loans[loanId].repaymentDeadline,
+                loanRequest.borrower
             );
 
-            // Start monitoring for liquidation
             lastPriceCheck[loanId] = block.timestamp;
         } else {
             // Schedule retry
@@ -855,40 +813,6 @@ contract P2PLendingProtocol is
         bool transfered = _transferToBorrower(loanRequestId);
         require(transfered, "Transfer To Borrower Failed");
     }
-
-    /**
-     * @dev Execute swap from funding asset to principal asset this is not currently available ill work on it last
-     */
-    // function _executeSwap(
-    //     uint256 bidId,
-    //     address tokenIn,
-    //     address tokenOut,
-    //     uint256 amountIn
-    // ) internal returns (bool) {
-    //     // This would integrate with ZetaChain's built-in DEX or external DEX
-    //     // For now, simplified implementation
-
-    //     SwapParams memory params = SwapParams({
-    //         tokenIn: tokenIn,
-    //         tokenOut: tokenOut,
-    //         amountIn: amountIn,
-    //         minAmountOut: _calculateMinAmountOut(tokenIn, tokenOut, amountIn),
-    //         slippageBps: 500 // 5% default slippage
-    //     });
-
-    //     // Execute swap through ZetaChain's swap functionality
-    //     // This is a simplified version - in production, you'd use actual DEX integration
-    //     try systemContract.uniswapv2PairFor(IZRC20(tokenIn), IZRC20(tokenOut)) returns (address pair) {
-    //         if (pair != address(0)) {
-    //             // Execute swap logic here
-    //             return true;
-    //         }
-    //     } catch {
-    //         return false;
-    //     }
-
-    //     return false;
-    // }
 
     /**
      * @dev Transfer funds to borrower's receiving wallet
@@ -1011,7 +935,7 @@ contract P2PLendingProtocol is
         collateralEscrows[loan.loanRequestID].canWithdraw = true;
         collateralEscrows[loan.loanRequestID].isLocked = false;
 
-        emit LoanCompleted(loanId, block.timestamp);
+        emit LoanCompleted(loanId, loan.borrower, block.timestamp);
     }
 
     /**
@@ -1039,71 +963,22 @@ contract P2PLendingProtocol is
     // ==================== LIQUIDATION SYSTEM ====================
 
     /**
-     * @dev Check multiple loans for liquidation eligibility, transfer logic to
-     */
-    function _checkLoanLiquidations() private whenNotPaused {
-        for (uint256 i = 0; i < activeLoanIds.length; i++) {
-            if (_shouldCheckPrice(activeLoanIds[i])) {
-                _checkSingleLoanLiquidation(activeLoanIds[i]);
-            }
-        }
-    }
-
-    /**
      * @dev Check if a loan should be liquidated
      */
-    function _checkSingleLoanLiquidation(
-        uint256 loanId
-    ) internal validLoan(loanId) {
+    function singleLoanLiquidation(
+        uint256 loanId,
+        address initiator
+    ) external validLoan(loanId) _onlyOwner(initiator) {
         Loan storage loan = loans[loanId];
 
-        // Only check active loans
-        if (loan.status != LoanStatus.ACTIVE) return;
-
-        LiquidationInfo memory info = _getLiquidationInfo(loanId);
-
-        // Check if should liquidate (collateral < 105% of loan value)
-        if (info.canLiquidate || block.timestamp > loan.repaymentDeadline) {
-            _liquidateLoan(
-                loanId,
-                block.timestamp > loan.repaymentDeadline
-                    ? "Deadline passed"
-                    : "Insufficient collateral"
-            );
-        }
+        _liquidateLoan(
+            loanId,
+            block.timestamp > loan.repaymentDeadline
+                ? "Deadline passed"
+                : "Insufficient collateral"
+        );
 
         lastPriceCheck[loanId] = block.timestamp;
-    }
-
-    /**
-     * @dev Get liquidation information for a loan
-     */
-    function _getLiquidationInfo(
-        uint256 loanId
-    ) internal view returns (LiquidationInfo memory) {
-        Loan storage loan = loans[loanId];
-
-        uint256 collateralValueUSD = getAssetValueUSD(
-            loan.collateralAsset,
-            loan.collateralAmount
-        );
-        uint256 loanValueUSD = getAssetValueUSD(
-            loan.principalAsset,
-            _calculateTotalOwed(loanId)
-        );
-
-        uint256 liquidationRatio = loanValueUSD > 0
-            ? (collateralValueUSD * 10000) / loanValueUSD
-            : 0;
-        bool canLiquidate = liquidationRatio < LIQUIDATION_THRESHOLD;
-
-        return
-            LiquidationInfo({
-                collateralValue: collateralValueUSD,
-                loanValue: loanValueUSD,
-                liquidationRatio: liquidationRatio,
-                canLiquidate: canLiquidate
-            });
     }
 
     /**
@@ -1158,13 +1033,6 @@ contract P2PLendingProtocol is
     }
 
     // =============== UTILITY FUNCTIONS ===============
-
-    /**
-     * @dev Check if price should be checked for liquidation
-     */
-    function _shouldCheckPrice(uint256 loanId) internal view returns (bool) {
-        return block.timestamp >= lastPriceCheck[loanId] + PRICE_CHECK_INTERVAL;
-    }
 
     /**
      * @dev Calculate total amount owed for a loan (principal + interest)
@@ -1295,19 +1163,6 @@ contract P2PLendingProtocol is
         return true;
     }
 
-    /**
-     * @dev Generate deterministic escrow address
-     */
-    function _generateEscrowAddress(
-        uint256 id,
-        string memory escrowType
-    ) internal pure returns (address) {
-        return
-            address(
-                uint160(uint256(keccak256(abi.encodePacked(id, escrowType))))
-            );
-    }
-
     function _removeLoanFromActive(uint256 loanId) internal {
         Loan storage loan = loans[loanId];
         require(loan.status != LoanStatus.ACTIVE, "Loan still active");
@@ -1324,68 +1179,118 @@ contract P2PLendingProtocol is
         delete activeLoanIndex[loanId];
     }
 
-    // =============== GETTERS ===============
-
     /**
-     *@dev Get asset last price from Chainlink feed
-     *@param asset ZRC20 token address
-     *@return lastPrice Last price fetched from Chainlink feed
-     *@return lastUpdated Timestamp of the last price update
-     *@return decimals Number of decimals in the price feed
+     *@dev Get asset last price
+     *@param assets ZRC20 token address
+     *@return lastPrice List of price map to assetsOut
+     *@return assetsOut List of asset addresses for the price list
      */
     function _getAssetLastPrice(
-        address asset
+        address[] memory assets,
+        bytes[] calldata pythUpdateData
     )
         internal
-        view
-        returns (uint128 lastPrice, uint64 lastUpdated, uint8 decimals)
+        returns (uint128[] memory lastPrice, address[] memory assetsOut)
     {
-        require(supportedAssets[asset], "Asset not supported");
+        uint256 updateFee = pyth.getUpdateFee(pythUpdateData);
+        pyth.updatePriceFeeds{value: updateFee}(pythUpdateData);
 
-        ChainLinkPriceFeed storage feed = chainLinkFeeds[asset];
-        (
-            uint80 roundID,
-            int256 answer,
-            uint256 startedAt,
-            uint256 updatedAt,
-            uint80 answeredInRound
-        ) = feed.priceFeed.latestRoundData();
-        uint8 _decimals = feed.priceFeed.decimals();
-        require(_decimals > 0, "Unsupported decimals");
-        require(answer > 0, "Invalid price from Chainlink feed");
-        require(updatedAt > feed.lastUpdated, "Price not updated"); // may fail on initial fetch
-        require(
-            updatedAt > 0 && updatedAt <= block.timestamp,
-            "Invalid update timestamp"
-        );
-        return (
-            lastPrice = uint128(uint256(answer)),
-            uint64(updatedAt),
-            decimals
-        );
+        lastPrice = new uint128[](assets.length);
+        assetsOut = assets;
+
+        for (uint256 i = 0; i < assets.length; i++) {
+            require(supportedAssets[assets[i]], "Asset not supported");
+
+            bytes32 assetID = pythPriceIds[assets[i]];
+
+            PythStructs.Price memory assetPrice = pyth.getPriceNoOlderThan(
+                assetID,
+                60
+            );
+
+            uint256 basePrice = PythUtils.convertToUint(
+                assetPrice.price,
+                assetPrice.expo,
+                18
+            );
+
+            require(basePrice > 0, "Invalid price from feed");
+
+            lastPrice[i] = uint128(basePrice);
+        }
     }
 
-    /**
-     * @dev Get the Chainlink price feed for an asset
-     * @param asset ZRC20 token address
-     * @return ChainLinkPriceFeed struct containing the price feed details
-     */
-    function _getChainLinkPriceFeed(
-        address asset
-    ) internal view returns (ChainLinkPriceFeed memory) {
-        require(supportedAssets[asset], "Asset not supported");
-        return chainLinkFeeds[asset];
-    }
+    // =============== GETTERS ===============
 
     /**
      * @dev Get the list of supported assets
      * @return Array of supported asset addresses
      */
-    function _getSupportedAssets() internal view returns (address[] memory) {
+    function getSupportedAssets() public view returns (address[] memory) {
         return supportedAssetsList;
     }
 
-    // =============== ENTRY POINT ===============
+    /**
+     * @dev Returns user's data
+     * @param user User's address
+     */
+    function getUserData(
+        address user
+    )
+        public
+        view
+        returns (
+            Loan[] memory loansOut,
+            Bid[] memory bidsOut,
+            LoanRequest[] memory loanRequestsOut,
+            Bid[] memory acceptedBidsOut
+        )
+    {
+        User storage u = users[user];
+
+        loansOut = new Loan[](u.loans.length);
+        bidsOut = new Bid[](u.bids.length);
+        loanRequestsOut = new LoanRequest[](u.loanRequests.length);
+        acceptedBidsOut = new Bid[](u.acceptedBids.length);
+
+        for (uint256 i = 0; i < u.loans.length; i++) {
+            loansOut[i] = loans[u.loans[i]];
+        }
+
+        for (uint256 i = 0; i < u.bids.length; i++) {
+            bidsOut[i] = bids[u.bids[i]];
+        }
+
+        for (uint256 i = 0; i < u.loanRequests.length; i++) {
+            loanRequestsOut[i] = loanRequests[u.loanRequests[i]];
+        }
+
+        for (uint256 i = 0; i < u.acceptedBids.length; i++) {
+            acceptedBidsOut[i] = bids[u.acceptedBids[i]];
+        }
+    }
+    /**
+     *@dev returns the loan and total owed on the loan
+     *@param loanId ID of required loan
+     */
+    function getLoan(
+        uint256 loanId
+    )
+        external
+        view
+        returns (
+            Loan memory loan,
+            uint256 totalOwed,
+            bytes32[] memory pairFeedIds // [principalFeedId, collateralFeedId]
+        )
+    {
+        loan = loans[loanId];
+        totalOwed = _calculateTotalOwed(loanId);
+        pairFeedIds = new bytes32[](2);
+        pairFeedIds[0]= pythPriceIds[loan.principalAsset];
+        pairFeedIds[1]= pythPriceIds[loan.collateralAsset];
+
+    }
 
     function onCall(
         MessageContext calldata context,
@@ -1456,37 +1361,17 @@ contract P2PLendingProtocol is
             _repayLoan(initiator, loanId, amount);
         } else if (actionHash == keccak256("ADD_SUPPORTED_ASSETS")) {
             // Add supported assets
-            (address[] memory assets, address[] memory aggregators) = abi
-                .decode(data, (address[], address[]));
-            _addSupportedAssets(initiator, assets, aggregators);
-            for (uint256 i = 0; i < assets.length; i++) {
-                emit ChainLinkPriceFeedAdded(
-                    assets[i],
-                    aggregators[i],
-                    block.timestamp
-                );
-            }
-        } else if (actionHash == keccak256("UPDATE_ASSET_PRICE")) {
-            // Update asset prices
-            _updateAssetPrice(initiator);
+            (address[] memory assets, bytes32[] memory feedIDs) = abi.decode(
+                data,
+                (address[], bytes32[])
+            );
+            _addSupportedAssets(initiator, assets, feedIDs);
         } else if (actionHash == keccak256("EMERGENCY_PAUSE")) {
             // Emergency pause the protocol
             _emergencyPause(initiator, string(data));
         } else if (actionHash == keccak256("UNPAUSE")) {
             // Unpause the protocol
             __unpause(initiator);
-        } else if (actionHash == keccak256("GET_SUPPORTED_ASSETS")) {
-            // Get supported assets
-            address[] memory assets = _getSupportedAssets();
-            // Encode the response
-            bytes memory response = abi.encode(assets);
-            // Send the response back to the caller
-            // systemContract.sendResponse(context, response);
-        } else if (actionHash == keccak256("GET_SUPPORTED_ACTIONS")) {
-            // Get supported actions
-            bytes memory response = abi.encode(SUPPORTED_ACTIONS);
-            // Send the response back to the caller
-            // systemContract.sendResponse(context, response);
         } else {
             // Handle other actions
             revert("Invalid action");
@@ -1498,76 +1383,26 @@ contract P2PLendingProtocol is
     /**
      * @dev Add supported assets
      * @param assets Array of ZRC20 token addresses
-     * @param aggregators Array of Chainlink aggregator addresses
+     * @param feedIds Array of pyth price feed ids
      */
     function _addSupportedAssets(
         address initiator,
         address[] memory assets,
-        address[] memory aggregators
+        bytes32[] memory feedIds
     ) internal _onlyOwner(initiator) {
-        require(assets.length == aggregators.length, "Mismatched arrays");
+        require(assets.length == feedIds.length, "Mismatched arrays");
         for (uint256 i = 0; i < assets.length; i++) {
             address asset = assets[i];
-            address aggregator = aggregators[i];
+            bytes32 feedId = feedIds[i];
 
             require(asset != address(0), "Invalid asset address");
-            require(aggregator != address(0), "Invalid aggregator address");
             require(!supportedAssets[asset], "Asset already supported");
 
             supportedAssets[asset] = true;
             supportedAssetsList.push(asset);
 
-            // Initialize Chainlink price feed
-            chainLinkFeeds[asset] = ChainLinkPriceFeed({
-                priceFeed: AggregatorV3Interface(aggregator),
-                decimals: 0,
-                lastUpdated: 0,
-                lastPrice: 0
-            });
+            pythPriceIds[asset] = feedId;
         }
-    }
-
-    /**
-     * @dev Update asset price
-     */
-    function _updateAssetPrice(
-        address initiator
-    ) internal _onlyOwner(initiator) {
-        require(supportedAssetsList.length > 0, "No supported assets");
-
-        // Iterate through all supported assets and update their prices
-        for (uint256 i = 0; i < supportedAssetsList.length; i++) {
-            address asset = supportedAssetsList[i];
-            ChainLinkPriceFeed storage feed = chainLinkFeeds[asset];
-
-            (
-                uint128 lastPrice,
-                uint64 lastUpdated,
-                uint8 decimals
-            ) = _getAssetLastPrice(asset);
-
-            uint128 currentPrice = feed.lastPrice;
-
-            uint128 priceChange = lastPrice > currentPrice
-                ? ((lastPrice - currentPrice) * 10000) / currentPrice
-                : ((currentPrice - lastPrice) * 10000) / currentPrice;
-
-            if (currentPrice != 0) {
-                // initial price in system is zero
-                require(priceChange <= 5000, "Price change too extreme"); // 50% max change
-            }
-
-            // Update the price and metadata
-            feed.lastPrice = lastPrice;
-            feed.lastUpdated = lastUpdated;
-            feed.decimals = decimals;
-
-            chainLinkFeeds[asset] = feed;
-            assetPrices[asset] = lastPrice * (10 ** (18 - decimals));
-            emit PriceUpdated(asset, assetPrices[asset], block.timestamp);
-        }
-
-        _checkLoanLiquidations();
     }
 
     /**
