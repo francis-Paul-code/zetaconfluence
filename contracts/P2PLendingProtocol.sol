@@ -167,7 +167,8 @@ contract P2PLendingProtocol is
         address fundingAsset; // Asset lender has (ZRC20)
         bool requiresSwap; // Whether lender asset needs swap to principal
         BidStatus status;
-        uint256 createdAt;
+        uint128 createdAt;
+        uint256 acceptedAt;
         uint128 gasDeducted; // Gas costs deducted from this bid
         bool exists;
     }
