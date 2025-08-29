@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { FaWallet } from 'react-icons/fa6';
+import { IoAdd } from 'react-icons/io5';
 
 import { useWallet } from '../hooks/useWallet';
 import type { EIP6963ProviderDetail } from '../types/wallet';
 import { Button } from './Button';
 import { WalletSelectionModal } from './WalletSelectionModal';
-import { IoAdd } from 'react-icons/io5';
 
 export const ConnectWallet = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);

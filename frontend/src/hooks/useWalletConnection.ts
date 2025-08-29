@@ -96,18 +96,18 @@ export const useWalletConnection = (providers: EIP6963ProviderDetail[]) => {
 
   // Disconnect wallet function
   const disconnectWallet = useCallback(
-    (walletUuid: string) => {
-      if (selectedProviders.length) {
+    (walletRdns: string) => {
+      console.log('Disconnecting wallet:', walletRdns);
+      if (selectedProviders[walletRdns]) {
         // Clear localStorage when disconnecting
         const saved: typeof savedWalletData = {};
         const selected: typeof selectedProviders = {};
         for (const item in savedWalletData) {
-          if (savedWalletData[item].providerUuid === walletUuid) return;
-
-          saved[savedWalletData[item].providerUuid!] = savedWalletData[item];
+          if (savedWalletData[item].providerRdns === walletRdns) continue;
+          saved[savedWalletData[item].providerRdns!] = savedWalletData[item];
         }
         for (const item in selectedProviders) {
-          if (selectedProviders[item].info.uuid === walletUuid) return;
+          if (selectedProviders[item].info.rdns === walletRdns) continue;
 
           selected[selectedProviders[item].info.rdns!] =
             selectedProviders[item];
@@ -120,7 +120,7 @@ export const useWalletConnection = (providers: EIP6963ProviderDetail[]) => {
   );
 
   const reconnectWallet = async () => {
-    console.log('a chnage is to happen')
+    console.log('a chnage is to happen');
     try {
       setReconnecting(true);
       // Try to find the saved provider using multiple methods
@@ -208,7 +208,6 @@ export const useWalletConnection = (providers: EIP6963ProviderDetail[]) => {
       return () => clearTimeout(timeout);
     }
   }, [providers]);
-
 
   return {
     selectedProviders,
