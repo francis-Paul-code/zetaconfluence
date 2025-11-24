@@ -1,1 +1,3 @@
 forge-std-1.9.7/=dependencies/forge-std-1.9.7/
+@openzeppelin/contracts/=dependecies/openzeppelin-contracts/contracts/
+@pythnetwork/pyth-sdk-solidity/=node_modules/@pythnetwork/pyth-sdk-solidity

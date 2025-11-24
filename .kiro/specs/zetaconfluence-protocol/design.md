@@ -23,9 +23,15 @@ graph TB
         WALLET[Wallet Connectors]
     end
     
+    
+
+    subgraph "Off-Chain Storage"
+        DB[(PostgreSQL)]
+        S3[(AWS S3)]
+    end
+
     subgraph "Off-Chain Services"
         BOT[Liquidation Bot]
-        DB[(PostgreSQL)]
     end
     
     subgraph "On-Chain Layer - ZetaChain"
@@ -42,6 +48,8 @@ graph TB
     end
     
     WEB --> WALLET
+    WEB --> DB
+    WEB --> S3
     WALLET --> PROTOCOL
     WEB --> PROTOCOL
     
