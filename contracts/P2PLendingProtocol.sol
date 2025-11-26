@@ -710,6 +710,78 @@ contract P2PLendingProtocol is
             revert("Invalid action");
         }
     }
+ // =============== GETTERS ===============
+
+    /**
+     * @dev Get the list of supported assets
+     * @return Array of supported asset addresses
+     */
+    function getSupportedAssets() public view returns (address[] memory) {
+        return supportedAssetsList;
+    }
+
+    /**
+     * @dev Returns user's data
+     * @param user User's address
+     */
+    function getUserData(
+        address user
+    )
+        public
+        view
+        returns (
+            Types.Loan[] memory loansOut,
+            Types.Bid[] memory bidsOut,
+            Types.LoanRequest[] memory loanRequestsOut,
+            Types.Bid[] memory acceptedBidsOut
+        )
+    {
+        Types.User storage user = store.users[user];
+
+        loansOut = new Types.Loan[](user.loans.length);
+        bidsOut = new Types.Bid[](user.bids.length);
+        loanRequestsOut = new Types.LoanRequest[](user.loanRequests.length);
+        acceptedBidsOut = new Types.Bid[](user.acceptedBids.length);
+
+        for (uint256 i = 0; i < user.loans.length; i++) {
+            loansOut[i] = store.loans[user.loans[i]];
+        }
+
+        for (uint256 i = 0; i < user.bids.length; i++) {
+            bidsOut[i] = store.bids[user.bids[i]];
+        }
+
+        for (uint256 i = 0; i < user.loanRequests.length; i++) {
+            loanRequestsOut[i] = store.loanRequests[user.loanRequests[i]];
+        }
+
+        for (uint256 i = 0; i < user.acceptedBids.length; i++) {
+            acceptedBidsOut[i] = store.bids[user.acceptedBids[i]];
+        }
+    }
+
+    /**
+     *@dev returns the loan and total owed on the loan
+     *@param loanId ID of required loan
+     */
+    function getLoan(
+        uint256 loanId
+    )
+        external
+        view
+        returns (
+            Types.Loan memory loan,
+            uint256 totalOwed,
+            bytes32[] memory pairFeedIds // [principalFeedId, collateralFeedId]
+        )
+    {
+        loan = store.loans[loanId];
+        require(store.loans[loanId].exists, "No Loan by this Id");
+        totalOwed = store.calculateTotalOwed(loanId);
+        pairFeedIds = new bytes32[](2);
+        pairFeedIds[0] = pythPriceIds[loan.principalAsset];
+        pairFeedIds[1] = pythPriceIds[loan.collateralAsset];
+    }
 
     // ==================== ADMIN FUNCTIONS ====================
 
