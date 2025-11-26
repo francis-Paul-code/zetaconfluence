@@ -147,4 +147,89 @@ library LoanManagement {
 
         return outstandingPrincipal + interest;
     }
+
+    function createLoan(
+        StorageLib.LendingStorage storage store,
+        address borrower,
+        address principalAsset,
+        address collateralAsset,
+        uint256 principalAmount,
+        uint256 collateralAmount,
+        bytes receivingWallet,
+        uint256 loanDuration,
+        uint64 interestRate,
+        uint256 loanRequestID,
+        uint128 totalRepaid,
+        Types.Bid[] memory bids
+    ) internal returns (Types.Loan memory loan) {
+        Types.LoanRequest loan_request = store.loanRequests[loanRequestID];
+
+        uint256 loanID = ++store.loanCounter;
+
+        loan = Types.Loan({
+            id: loanID,
+            borrower: borrower,
+            principalAsset: principalAsset,
+            collateralAsset: collateralAsset,
+            principalAmount: principalAmount,
+            collateralAmount: collateralAmount,
+            recievingWallet: recievingWallet,
+            interestRate: interestRate,
+            loanDuration: loanDuration,
+            repaymentDeadline: block.timestamp +
+                    loan_request.loanDuration *
+                    1 days,
+            status: Types.LoanStatus.ACTIVE,
+            loanRequestID: loanRequestID,
+            bids: bids,
+            totalRepaid: 0,
+            createdAt: block.timestamp,
+            exists: true
+        });
+        if (store.users[borrower].exists) {
+            store.users[borrower].loans.push(loanId);
+        } else {
+            Types.User storage user = store.users[borrower];
+            user.loans.push(loanID);
+            user.exists = true;
+            user.userAddress = borrower;
+        }
+
+        store.activeLoanIds.push(loanID);
+        uint256 index = store.activeLoanIds.length - 1;
+        store.activeLoanIndex[loanID] = index;
+
+        store.loanRequests[loan_request.id].loanID = loanID;
+        for (uint256 i = 0; i < bids.length; i++) {
+            store.bids[bids[i].id].status = Types.BidStatus.ACCEPTED;
+        }
+
+    }
+
+
+    /**
+     * @dev Cancel loan and return all funds
+     */
+    function cancelLoanAndReturnFunds(
+        StorageLib.LendingStorage storage store,
+        uint256 loanRequestId,
+        uint256[] memory acceptedBids
+    ) internal {
+        Types.LoanRequest storage loan_request = store.loanRequests[loanRequestId];
+
+        // Return collateral to borrower
+        Types.EscrowInfo storage collateral_escrow = store.escrows[keccak256(abi.encode(loanRequestId,loan_request.borrower,1))];
+
+        collateral_escrow.canWithdraw = true;
+        collateral_escrow.isLocked = false;
+
+        for (uint256 i = 0; i < acceptedBids.length; i++) {
+            Types.Bid storage bid = store.bids[acceptedBids[i]];
+            Types.EscrowInfo storage funding_escrow =  store.escrows[keccak256(abi.encode(bid.id,bid.lender,2))];
+            funding_escrow.canWithdraw = true; // allow user to request for withdraw
+            funding_escrow.balance += bid.amountFilled; // return escrow balance to before loan execution
+        }
+
+        loan_request.status = Types.LoanRequestStatus.CANCELLED;
+    }
 }

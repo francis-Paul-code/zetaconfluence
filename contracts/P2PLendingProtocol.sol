@@ -375,6 +375,142 @@ contract P2PLendingProtocol is
         escrow.isLocked = false;
     }
 
+        // ==================== LOAN EXECUTION ====================
+
+    /**
+     * @dev Execute loan by accepting specific bids (must total 100% of principal)
+     * @param initiator address of call initiator
+     * @param loanRequestId ID of the loan to execute
+     * @param acceptedBids Array of bid IDs to accept
+     */
+    function _executeLoan(
+        address initiator,
+        uint256 loanRequestId,
+        uint256[] memory acceptedBids
+    )
+        internal
+        nonReentrant
+        whenNotPaused
+        validLoanRequest(loanRequestId)
+        onlyBorrower(loanRequestId, initiator)
+    {
+        Types.LoanRequest storage loan_request = store.loanRequests[loanRequestId];
+        require(
+            block.timestamp <=
+                loan_request.createdAt + loan_request.requestValidDays * 1 days,
+            "Loan request expired"
+        );
+        require(acceptedBids.length > 0, "No bids provided");
+
+        uint256 totalFunding = 0;
+        uint256 weightedInterestRate = 0;
+
+        // handle accepted bids and any swaps here as well
+        for (uint256 i = 0; i < acceptedBids.length; i++) {
+            Types.Bid storage bid = store.bids[acceptedBids[i]];
+            require(
+                bid.loanRequestId == loanRequestId,
+                "Bid not for this loan"
+            );
+            require(
+                bid.status == Types.BidStatus.PENDING,
+                "Invalid bid status"
+            );
+
+            if (totalFunding + bid.amount > loan_request.principalAmount) {
+                uint256 balance = (loan_request.principalAmount - totalFunding);
+                totalFunding += balance;
+                store.bids[acceptedBids[i]].amountFilled = uint128(balance);
+
+                // gas from filled bid is 1.5% of ammountFilled
+                store.bids[acceptedBids[i]].gasDeducted =
+                    (uint128(balance) * 15) /
+                    1000;
+                store.escrows[keccak256(abi.encode(bid.id,bid.lender,2))].balance -= uint128(balance); // update the escrow wallet balances
+                weightedInterestRate += (balance * bid.interestRate);
+            } else {
+                totalFunding += bid.amount;
+                store.bids[acceptedBids[i]].amountFilled = uint128(bid.amount);
+                // gas from filled bid is 1.5% of ammountFilled, should later change to account for earnings
+                store.bids[acceptedBids[i]].gasDeducted =
+                    (uint128(bid.amount) * 15) /
+                    1000;
+                store.escrows[keccak256(abi.encode(bid.id,bid.lender,2))].balance -= uint128(bid.amount); // update the escrow wallet balances
+                weightedInterestRate += (bid.amount * bid.interestRate);
+            }
+
+            // currently after filling lps cant remove their money, should allow this later but only if the amount withdrawn is less that the balance of the escrow, balance = amount - amountFilled
+
+            store.users[bid.lender].acceptedBids.push(acceptedBids[i]);
+            store.escrows[keccak256(abi.encode(bid.id,bid.lender,2))].canWithdraw = false;
+        }
+
+        weightedInterestRate = weightedInterestRate / totalFunding;
+
+         bool success = _withdrawTokens(
+            loan_request.receivingWallet,
+            totalFunding,
+            loan_request.principalAsset
+        );
+        
+        if (success) {
+            
+            Types.Loan memory loan = store.createLoan(
+                                                loan_request.borrower,
+                                                loan_request.principalAsset,
+                                                loan_request.collateralAsset,
+                                                loan_request.principalAmount, 
+                                                loan_request.collateralAmount,
+                                                loan_request.receivingWallet, 
+                                                loan_request.loanDuration, 
+                                                uint64(weightedInterestRate),
+                                                loan_request.id, 0);
+
+            
+
+            emit Types.LoanFunded(loan.id, totalFunding, acceptedBids.length);
+            emit Types.LoanActivated(
+                loan.id,
+                block.timestamp,
+                loan.repaymentDeadline,
+                loan_request.borrower
+            );
+
+            lastPriceCheck[loan.id] = block.timestamp;
+        } else {
+            // Schedule retry
+            _scheduleRetryExecution(loanRequestId, acceptedBids);
+        }
+    }
+
+    /**
+     * @dev Schedule retry execution for failed loan
+     */
+    function _scheduleRetryExecution(
+        uint256 loanRequestId,
+        uint256[] memory acceptedBids
+    ) internal {
+        uint256 attempts = retryAttempts[loanRequestId];
+
+        if (attempts >= RETRY_ATTEMPTS) {
+            // Mark loan as failed and return funds
+            store.cancelLoanAndReturnFunds(loanRequestId, acceptedBids);
+            return;
+        }
+
+        retryAttempts[loanRequestId] = attempts + 1;
+        nextRetryTime[loanRequestId] =
+            block.timestamp +
+            (1 hours * (2 ** attempts));
+
+        emit Types.LoanRetryScheduled(
+            loanRequestId,
+            nextRetryTime[loanRequestId]
+        );
+    }
+
+
+    
 
     // ====================== UTILS ========================================
     
@@ -445,6 +581,14 @@ contract P2PLendingProtocol is
             // Place a bid on a loan request
             Types.MetaBid[] memory metaBids = abi.decode(data, (Types.MetaBid[]));
             _placeBidBatch(metaBids);
+        } else if (actionHash == keccak256("EXECUTE_LOAN")) {
+            (uint256 loanRequestId, uint256[] memory acceptedBids) = abi.decode(
+                data,
+                (uint256, uint256[])
+            );
+
+            // Execute Loan
+            _executeLoan(initiator, loanRequestId, acceptedBids);
         }
     }
 
