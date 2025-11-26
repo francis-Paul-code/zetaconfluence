@@ -509,7 +509,56 @@ contract P2PLendingProtocol is
         );
     }
 
+      // ==================== LOAN REPAYMENT ====================
 
+    /**
+     * @dev Repay loan (partial or full)
+     * @param initiator address of initiator of this function
+     * @param loanId ID of loan to repay
+     * @param amount Amount to repay
+     */
+    function _repayLoan(
+        address initiator,
+        uint256 loanId,
+        uint256 amount
+    )
+        internal
+        nonReentrant
+        whenNotPaused
+        validLoan(loanId)
+        onlyDebtor(loanId, initiator)
+    {
+        Types.Loan storage loan = store.loans[loanId];
+        require(
+            block.timestamp <= loan.repaymentDeadline,
+            "Loan deadline passed"
+        );
+
+        uint256 totalOwed = store.calculateTotalOwed(loanId);
+        require(amount > 0 && amount <= totalOwed, "Invalid repayment amount");
+
+        // Update loan balance
+        loan.totalRepaid += uint128(amount);
+
+        // Distribute repayment to lenders pro-rata
+        store.distributeLoanRewards(loanId, amount);
+
+        emit Types.LoanRepayment(loanId, amount, totalOwed - amount);
+
+        // Check if loan fully repaid
+        if (loan.totalRepaid >= totalOwed) {
+            Types.Loan storage loan = s.loans[loanId];
+            loan.status = Types.LoanStatus.COMPLETED;
+
+            store.removeLoanFromActive(loanId);
+
+            // Release collateral to borrower
+            store.escrows[keccak256(abi.encode(loan.loanRequestID, initiator, 1))].canWithdraw = true;
+            store.escrows[keccak256(abi.encode(loan.loanRequestID, initiator, 1))].isLocked = false;
+
+            emit Types.LoanCompleted(loanId, loan.borrower, block.timestamp);
+        }
+    }
     
 
     // ====================== UTILS ========================================
@@ -581,6 +630,11 @@ contract P2PLendingProtocol is
             // Place a bid on a loan request
             Types.MetaBid[] memory metaBids = abi.decode(data, (Types.MetaBid[]));
             _placeBidBatch(metaBids);
+        } else if (actionHash == keccak256("RECOVER_BID_FUNDING")) {
+            // Recover funding collateral from a bid
+            uint256 bidId = abi.decode(data, (uint256));
+            bytes memory bytesInitiator = abi.encodePacked(initiator);
+            _releaseFundingCollateral(initiator, bidId, bytesInitiator);
         } else if (actionHash == keccak256("EXECUTE_LOAN")) {
             (uint256 loanRequestId, uint256[] memory acceptedBids) = abi.decode(
                 data,
@@ -589,6 +643,11 @@ contract P2PLendingProtocol is
 
             // Execute Loan
             _executeLoan(initiator, loanRequestId, acceptedBids);
+        } else if (actionHash == keccak256("REPAY_LOAN")) {
+            // Repay a loan
+            (uint256 loanId) = abi.decode(data, (uint256));
+            require(amount > 0, "No amount recieved");
+            _repayLoan(initiator, loanId, amount);
         }
     }
 
