@@ -560,6 +560,57 @@ contract P2PLendingProtocol is
         }
     }
     
+    // ==================== LIQUIDATION SYSTEM ====================
+
+    /**
+     * @dev Check if a loan should be liquidated
+     */
+    function singleLoanLiquidation(
+        uint256 loanId,
+        address initiator
+    ) external validLoan(loanId) _onlyOwner(initiator) {
+        Types.Loan storage loan = store.loans[loanId];
+
+        _liquidateLoan(
+            loanId,
+            block.timestamp > loan.repaymentDeadline
+                ? "Deadline passed"
+                : "Insufficient collateral"
+        );
+
+        lastPriceCheck[loanId] = block.timestamp;
+    }
+
+    /**
+     * @dev Execute loan liquidation
+     */
+    function _liquidateLoan(uint256 loanId, string memory reason) internal {
+        Types.Loan storage loan = store.loans[loanId];
+        loan.status = Types.LoanStatus.LIQUIDATED;
+
+        store.removeLoanFromActive(loanId);
+
+        // Calculate amounts owed to lenders
+        uint256 totalOwed = store.calculateTotalOwed(loanId);
+        uint256 collateralAmount = loan.collateralAmount;
+
+        // Swap collateral to principal asset and distribute to lenders
+        bool swapSuccess = LoanUtils.executeSwap(
+            address(this),
+            loan.collateralAsset,
+            loan.principalAsset,
+            collateralAmount,
+            uniswapRouter
+        );
+
+        if (swapSuccess) {
+            // Distribute liquidation proceeds to lenders
+            store.distributeLoanRewards(loanId, totalOwed);
+        }
+
+        emit Types.LoanLiquidated(loanId, collateralAmount, reason);
+    }
+
 
     // ====================== UTILS ========================================
     
@@ -626,7 +677,13 @@ contract P2PLendingProtocol is
                 loanDuration,
                 requestValidDays
             );
-        } else if (actionHash == keccak256("PLACE_LOAN_REQUEST_BID")) {
+        }} else if (actionHash == keccak256("RECOVER_LOAN_COLLATERAL")) {
+            (uint256 loanRequestId, bytes memory to) = abi.decode(
+                data,
+                (uint256, bytes)
+            );
+            _releaseLoanCollateral(initiator, loanRequestId, to);
+        }  else if (actionHash == keccak256("PLACE_LOAN_REQUEST_BID")) {
             // Place a bid on a loan request
             Types.MetaBid[] memory metaBids = abi.decode(data, (Types.MetaBid[]));
             _placeBidBatch(metaBids);
@@ -648,6 +705,9 @@ contract P2PLendingProtocol is
             (uint256 loanId) = abi.decode(data, (uint256));
             require(amount > 0, "No amount recieved");
             _repayLoan(initiator, loanId, amount);
+        } else {
+            // Handle other actions
+            revert("Invalid action");
         }
     }
 
