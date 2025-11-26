@@ -1,59 +1,43 @@
-import { Command } from "commander";
-import { ethers } from "ethers";
-import { getAbi } from "./common";
+import { task, types } from "hardhat/config";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
 
-const main = async (opts: any) => {
-  const provider = new ethers.providers.JsonRpcProvider(opts.rpc);
-  const signer = new ethers.Wallet(opts.privateKey, provider);
+const main = async (args: any, hre: HardhatRuntimeEnvironment) => {
+  const network = hre.network.name;
 
-  const network = await provider.getNetwork();
-  const networkInfo = network.name ?? network.chainId;
+  const [signer] = await hre.ethers.getSigners();
+  if (signer === undefined) {
+    throw new Error(
+      `Wallet not found. Please, run "npx hardhat account --save" or set PRIVATE_KEY env variable (for example, in a .env file)`
+    );
+  }
 
-  try {
-    const { abi, bytecode } = getAbi(opts.name);
-    const factory = new ethers.ContractFactory(abi, bytecode, signer);
+  const factory = await hre.ethers.getContractFactory(args.name);
+  const contract = await (factory as any).deploy(args.gateway);
+  await contract.deployed();
 
-    const contract = await factory.deploy(opts.gateway);
-    const tx = contract.deployTransaction;
-    const predictedAddress = ethers.utils.getContractAddress({
-      from: signer.address,
-      nonce: tx.nonce,
-    });
-
+  if (args.json) {
     console.log(
       JSON.stringify({
-        contractAddress: predictedAddress,
+        contractAddress: contract.address,
         deployer: signer.address,
-        network: networkInfo,
-        transactionHash: tx?.hash,
+        network: network,
+        transactionHash: contract.deployTransaction.hash,
       })
     );
-  } catch (err) {
-    console.error(
-      "Deployment failed:",
-      err instanceof Error ? err.message : err
-    );
-    process.exit(1);
+  } else {
+    console.log(`🔑 Using account: ${signer.address}
+
+🚀 Successfully deployed "${args.name}" contract on ${network}.
+📜 Contract address: ${contract.address}
+`);
   }
 };
 
-export const deploy = new Command("deploy")
-  .description("Deploy the hello contract")
-  .requiredOption(
-    "-r, --rpc <url>",
-    "RPC URL (default: testnet)",
-    "https://zetachain-athens-evm.blockpi.network/v1/rpc/public"
-  )
-  .requiredOption("-k, --private-key <key>", "Private key")
-  .option("-n, --name <name>", "Contract name", "Universal")
-  .option(
-    "-g, --gateway <address>",
-    "Gateway address (default: testnet)",
+task("deploy", "Deploy the contract", main)
+  .addFlag("json", "Output in JSON")
+  .addOptionalParam("name", "Contract to deploy", "Universal")
+  .addOptionalParam(
+    "gateway",
+    "Gateway address (default: ZetaChain Gateway on testnet)",
     "0x6c533f7fe93fae114d0954697069df33c9b74fd7"
-  )
-  .action((opts) => {
-    main(opts).catch((err) => {
-      console.error("Unhandled error:", err);
-      process.exit(1);
-    });
-  });
+  );

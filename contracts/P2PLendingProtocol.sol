@@ -677,7 +677,7 @@ contract P2PLendingProtocol is
                 loanDuration,
                 requestValidDays
             );
-        }} else if (actionHash == keccak256("RECOVER_LOAN_COLLATERAL")) {
+        } else if (actionHash == keccak256("RECOVER_LOAN_COLLATERAL")) {
             (uint256 loanRequestId, bytes memory to) = abi.decode(
                 data,
                 (uint256, bytes)
@@ -710,7 +710,9 @@ contract P2PLendingProtocol is
             revert("Invalid action");
         }
     }
- // =============== GETTERS ===============
+
+
+    // =============== GETTERS ===============
 
     /**
      * @dev Get the list of supported assets
