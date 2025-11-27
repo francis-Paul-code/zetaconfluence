@@ -1,8 +1,8 @@
 import './WalletControls.css';
 
 import { useEip6963Wallet } from '../hooks/useEip6963Wallet';
-import { truncateAddress } from '../utils/truncate';
-import { IconDisconnect } from './icons';
+import { truncateAddress } from '../../utils/truncate';
+import { IconDisconnect } from '../icons';
 
 export const WalletControls = () => {
   const { account, disconnectWallet } = useEip6963Wallet();

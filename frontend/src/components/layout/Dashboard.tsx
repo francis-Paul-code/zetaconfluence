@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 
 import dark from '../../../public/logos/zetaconfluence_logo_clear_dark.svg';
 import light from '../../../public/logos/zetaconfluence_logo_clear_light.svg';
+import { useTheme } from '../../hooks/useTheme';
+import { ConnectWallet } from '../ConnectWallet';
 import { ThemeToggle } from '../ThemeToggle';
 import SideNav from './SideNav';
-import { useTheme } from '../../hooks/useTheme';
 
 interface Props extends React.PropsWithChildren {
   children: React.ReactElement;
@@ -23,7 +24,9 @@ const Dashboard: React.FC<Props> = ({ children }) => {
             alt="logo"
           />
         </div>
-        
+        <div className="h-full w-auto mr-2">
+          <ConnectWallet />
+        </div>
         <div className="h-full w-auto aspect-square cursor-pointer ">
           <ThemeToggle />
         </div>
@@ -36,7 +39,7 @@ const Dashboard: React.FC<Props> = ({ children }) => {
           {children}
         </div>
       </div>
-      <div className=" w-full bg-red-900 px-4 flex items-center bottom-0 h-4">
+      <div className=" w-full bg-primary px-4 flex items-center bottom-0 h-4">
         here
       </div>
     </div>

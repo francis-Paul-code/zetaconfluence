@@ -1,7 +1,8 @@
 import { TbLayoutDashboardFilled } from 'react-icons/tb';
+
+import Home from '../pages/dashboard/Home';
 import Landing from '../pages/main/Landing';
 import Markets from '../pages/main/Markets';
-import Home from '../pages/dashboard/Home';
 
 export type RouteType = {
   path: string;
@@ -31,5 +32,6 @@ export const getMainRoutes = (): RouteType[] => {
   return [
     { path: '/', component: Landing, isLanding:true},
      { path: '/markets', component: Markets, name: 'Markets' },
+     ...getDashboardRoutes(),
   ];
 };
