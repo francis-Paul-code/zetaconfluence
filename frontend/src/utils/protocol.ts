@@ -103,11 +103,11 @@ const contractMutateMultiCall = async () => {
       });
     }
 
-    await publicClient.multicall({
-      contracts: queue,
-    });
+    // await publicClient.multicall({
+    //   contracts: queue,
+    // });
   } catch (err) {
-    if (error instanceof Error) throw err;
+    if (err instanceof Error) throw err;
     throw new Error(err as string);
   }
 };

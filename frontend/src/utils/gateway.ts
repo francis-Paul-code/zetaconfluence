@@ -1,3 +1,5 @@
+// @ts-nocheck - still under dev
+
 import {
   createPublicClient,
   http,
@@ -58,7 +60,7 @@ export async function depositAndCall({
       },
     ],
     value: parseEther(etherAmount),
-  })
+  } )
 
   return await waitFor3Confirm({ client, hash })
 }

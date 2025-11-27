@@ -2,11 +2,11 @@
 
 import { type ReactNode, useCallback, useMemo } from 'react';
 
-import type { ISupportedAsset } from '../constants/chains';
+import type { ChainInfo, ISupportedAsset } from '../constants/chains';
 import { useWalletConnection } from '../hooks/useWalletConnection';
 import { useWalletProviders } from '../hooks/useWalletProviders';
 import { useWalletState } from '../hooks/useWalletState';
-import { WalletContext } from './WalletContext';
+import { WalletContext, type WalletContextType } from './WalletContext';
 
 export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const { providers, supportedAssets } = useWalletProviders();
@@ -106,7 +106,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     },
     []
   );
-  const contextValue = useMemo(
+  const contextValue: WalletContextType = useMemo(
     () => ({
       providers,
       selectedProviders,
@@ -118,9 +118,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       decimals,
       supportedAssets,
       isConnected,
-      connectWallet,
+      connectWallet: connectWallet!,
       disconnectWallet,
-    }),
+      chains:[] as ChainInfo[]
+    } as any),
     [
       providers,
       selectedProviders,

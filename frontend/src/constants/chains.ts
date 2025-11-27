@@ -133,3 +133,5 @@ export interface ISupportedAsset {
   address?: string;
   icon: string;
 }
+
+export const BITCOIN_GATEWAY_ADDRESS_SIGNET =""
