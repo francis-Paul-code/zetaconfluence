@@ -4,9 +4,12 @@
     "paths": {
       "ethers": ["./node_modules/ethers"],
       "ethers/*": ["./node_modules/ethers/*"]
-    }
+    },
+    "types": ["minimatch"]
   },
   "files": [],
+  "typeRoots": ["./node_modules/@types"],
+  "skipLibCheck": true,
   "references": [
     {
       "path": "./tsconfig.app.json"
@@ -14,5 +17,6 @@
     {
       "path": "./tsconfig.node.json"
     }
-  ]
+  ],
+  "ignore": []
 }

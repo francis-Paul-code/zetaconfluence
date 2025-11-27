@@ -8,12 +8,12 @@ import {
   FaStar,
   FaUsers,
 } from 'react-icons/fa';
-import logo_light from '../../../public/logos/zetaconfluence_logo_clear_light.png';
-import logo_dark from '../../../public/logos/zetaconfluence_logo_clear_dark.svg';
 import { useNavigate } from 'react-router';
+
+import logo_dark from '../../../public/logos/zetaconfluence_logo_clear_dark.svg';
 import { Button } from '../../components/Button';
 const LandingPage = () => {
-  const [isVisible, setIsVisible] = useState({});
+  const [isVisible, setIsVisible] = useState<any>({});
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
   const navigate = useNavigate();
   const stats = [
@@ -90,7 +90,7 @@ const LandingPage = () => {
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            setIsVisible((prev) => ({ ...prev, [entry.target.id]: true }));
+            setIsVisible((prev:any) => ({ ...prev, [entry.target.id]: true }));
           }
         });
       },

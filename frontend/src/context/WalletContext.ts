@@ -3,7 +3,7 @@ import { createContext } from 'react';
 import type { ChainInfo, ISupportedAsset, Wallet } from '../constants/chains';
 import type { EIP6963ProviderDetail } from '../types/wallet';
 
-interface WalletContextType {
+export interface WalletContextType {
   providers: EIP6963ProviderDetail[];
   selectedProviders: Record<string, EIP6963ProviderDetail>;
   connecting: boolean;
@@ -22,7 +22,7 @@ interface WalletContextType {
   connectWallet: (provider: EIP6963ProviderDetail) => Promise<{
     success: boolean;
     account?: string | null;
-    error?: string;
+    error?:string | undefined;
   }>;
   disconnectWallet: (providerRdns: string) => Promise<void>;
   chains: ChainInfo[];
