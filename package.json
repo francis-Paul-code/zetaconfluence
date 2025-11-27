@@ -1,7 +1,6 @@
 {
-  "name": "hello",
+  "name": "zetaconfluence",
   "version": "1.0.0",
-  "description": "Simple universal app that emits an event when called from a connected chain.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
