@@ -1,3 +1,5 @@
+import "reflect-metadata";
+
 import { runBot } from "./bot";
 import { initDB } from "./db";
 

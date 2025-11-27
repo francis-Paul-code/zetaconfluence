@@ -155,14 +155,13 @@ library LoanManagement {
         address collateralAsset,
         uint256 principalAmount,
         uint256 collateralAmount,
-        bytes receivingWallet,
+        bytes memory recievingWallet,
         uint256 loanDuration,
         uint64 interestRate,
         uint256 loanRequestID,
-        uint128 totalRepaid,
-        Types.Bid[] memory bids
+        uint256[] memory bids
     ) internal returns (Types.Loan memory loan) {
-        Types.LoanRequest loan_request = store.loanRequests[loanRequestID];
+        Types.LoanRequest storage loan_request = store.loanRequests[loanRequestID];
 
         uint256 loanID = ++store.loanCounter;
 
@@ -173,7 +172,7 @@ library LoanManagement {
             collateralAsset: collateralAsset,
             principalAmount: principalAmount,
             collateralAmount: collateralAmount,
-            recievingWallet: recievingWallet,
+            receivingWallet: recievingWallet,
             interestRate: interestRate,
             loanDuration: loanDuration,
             repaymentDeadline: block.timestamp +
@@ -187,7 +186,7 @@ library LoanManagement {
             exists: true
         });
         if (store.users[borrower].exists) {
-            store.users[borrower].loans.push(loanId);
+            store.users[borrower].loans.push(loanID);
         } else {
             Types.User storage user = store.users[borrower];
             user.loans.push(loanID);
@@ -201,7 +200,7 @@ library LoanManagement {
 
         store.loanRequests[loan_request.id].loanID = loanID;
         for (uint256 i = 0; i < bids.length; i++) {
-            store.bids[bids[i].id].status = Types.BidStatus.ACCEPTED;
+            store.bids[bids[i]].status = Types.BidStatus.ACCEPTED;
         }
 
     }

@@ -25,7 +25,7 @@ import {Types} from "./libraries/Types.sol";
 import {LoanUtils} from "./libraries/LoanUtils.sol";
 import {LoanManagement} from "./libraries/LoanManagement.sol";
 import {StorageLib} from "./libraries/Storage.sol";
-import {BidManagement} from "./libraries/BidManagement.sol"
+import {BidManagement} from "./libraries/BidManagement.sol";
 
 contract P2PLendingProtocol is
     UniversalContract,
@@ -66,8 +66,6 @@ contract P2PLendingProtocol is
         "RECOVER_LOAN_COLLATERAL"
     ];
 
-    error Unauthorized();
-
     // =============== MAPPINGS ===============
 
     StorageLib.LendingStorage internal store;
@@ -82,7 +80,7 @@ contract P2PLendingProtocol is
 
     // =============== VARIABLES ===============
     address[] public supportedAssetsList; // List of supported assets for iteration
-    
+
     using LoanManagement for StorageLib.LendingStorage;
     using BidManagement for StorageLib.LendingStorage;
 
@@ -97,18 +95,16 @@ contract P2PLendingProtocol is
     }
 
     modifier onlyLender(uint256 BidId, address initiator) {
-        require(store.bids[BidId].lender == initiator, "Only lender can call this");
+        require(
+            store.bids[BidId].lender == initiator,
+            "Only lender can call this"
+        );
         _;
     }
 
     modifier _onlyOwner(address initiator) {
         address _owner = owner();
         if (initiator != _owner) revert Unauthorized();
-        _;
-    }
-
-    modifier onlyGateway() {
-        if (msg.sender != address(gatewayZEVM)) revert Unauthorized();
         _;
     }
 
@@ -203,7 +199,13 @@ contract P2PLendingProtocol is
         );
 
         // Create escrow record
-        store.createEscrow(reqId, borrower, collateralAsset, collateralAmount, 1);
+        store.createEscrow(
+            reqId,
+            borrower,
+            collateralAsset,
+            collateralAmount,
+            1
+        );
 
         emit Types.CollateralLocked(
             reqId,
@@ -233,7 +235,9 @@ contract P2PLendingProtocol is
         uint256 loanRequestId,
         bytes memory to
     ) internal whenNotPaused onlyBorrower(loanRequestId, initiator) {
-        Types.LoanRequest storage loan_request = store.loanRequests[loanRequestId];
+        Types.LoanRequest storage loan_request = store.loanRequests[
+            loanRequestId
+        ];
         Types.EscrowInfo storage escrow = store.escrows[
             keccak256(abi.encode(loan_request.id, loan_request.borrower, 1))
         ];
@@ -249,19 +253,23 @@ contract P2PLendingProtocol is
                 "Loan is still active"
             );
         }
-        require(e.balance > 0, "No Collateral Available for withdraw");
+        require(escrow.balance > 0, "No Collateral Available for withdraw");
 
         bool withdraw = _withdrawTokens(to, escrow.balance, escrow.asset);
 
         if (withdraw) {
-            emit Types.FundingCollateralReleased(loanRequestId, to, escrow.balance);
+            emit Types.FundingCollateralReleased(
+                loanRequestId,
+                to,
+                escrow.balance
+            );
         } else {
             revert("Funding release failed");
         }
         escrow.isLocked = false;
     }
 
-     // =============== BIDDING SYSTEM ===============
+    // =============== BIDDING SYSTEM ===============
 
     /**
      * @dev Place multiple bids using meta-transactions (gas-free for lenders)
@@ -301,7 +309,9 @@ contract P2PLendingProtocol is
         Types.MetaBid memory bid
     ) internal returns (uint256) {
         // Validate bid against loan
-        Types.LoanRequest storage loan_request = s.loanRequests[bid.loanRequestId];
+        Types.LoanRequest storage loan_request = store.loanRequests[
+            bid.loanRequestId
+        ];
         require(
             block.timestamp <=
                 loan_request.createdAt + loan_request.requestValidDays * 1 days, // bug here
@@ -321,17 +331,23 @@ contract P2PLendingProtocol is
         );
 
         // Create bid record
-         Types.Bid storage _bid = store.createBid(
+        Types.Bid memory _bid = store.createBid(
             bid.loanRequestId,
-             bid.lender,
-             bid.amount,
-             bid.interestRate,
-             bid.fundingAsset,
-             Types.BidStatus.PENDING
+            bid.lender,
+            bid.amount,
+            bid.interestRate,
+            bid.fundingAsset,
+            Types.BidStatus.PENDING
         );
 
         // Lock lender funds
-         store.createEscrow(_bid.id, _bid.lender, _bid.fundingAsset, _bid.amount, 2);
+        store.createEscrow(
+            _bid.id,
+            _bid.lender,
+            _bid.fundingAsset,
+            _bid.amount,
+            2
+        );
 
         // Increment nonce
         nonces[_bid.lender]++;
@@ -358,7 +374,9 @@ contract P2PLendingProtocol is
         uint256 bidId,
         bytes memory to
     ) internal whenNotPaused onlyLender(bidId, initiator) {
-        Types.EscrowInfo storage escrow = store.escrows[keccak256(abi.encode(bidId,initiator,2))];
+        Types.EscrowInfo storage escrow = store.escrows[
+            keccak256(abi.encode(bidId, initiator, 2))
+        ];
         require(escrow.isLocked, "Funding not locked");
         require(escrow.canWithdraw, "Cannot withdraw yet");
         require(escrow.owner == initiator, "Only owner can release");
@@ -375,7 +393,7 @@ contract P2PLendingProtocol is
         escrow.isLocked = false;
     }
 
-        // ==================== LOAN EXECUTION ====================
+    // ==================== LOAN EXECUTION ====================
 
     /**
      * @dev Execute loan by accepting specific bids (must total 100% of principal)
@@ -394,7 +412,9 @@ contract P2PLendingProtocol is
         validLoanRequest(loanRequestId)
         onlyBorrower(loanRequestId, initiator)
     {
-        Types.LoanRequest storage loan_request = store.loanRequests[loanRequestId];
+        Types.LoanRequest storage loan_request = store.loanRequests[
+            loanRequestId
+        ];
         require(
             block.timestamp <=
                 loan_request.createdAt + loan_request.requestValidDays * 1 days,
@@ -426,7 +446,9 @@ contract P2PLendingProtocol is
                 store.bids[acceptedBids[i]].gasDeducted =
                     (uint128(balance) * 15) /
                     1000;
-                store.escrows[keccak256(abi.encode(bid.id,bid.lender,2))].balance -= uint128(balance); // update the escrow wallet balances
+                store
+                    .escrows[keccak256(abi.encode(bid.id, bid.lender, 2))]
+                    .balance -= uint128(balance); // update the escrow wallet balances
                 weightedInterestRate += (balance * bid.interestRate);
             } else {
                 totalFunding += bid.amount;
@@ -435,38 +457,41 @@ contract P2PLendingProtocol is
                 store.bids[acceptedBids[i]].gasDeducted =
                     (uint128(bid.amount) * 15) /
                     1000;
-                store.escrows[keccak256(abi.encode(bid.id,bid.lender,2))].balance -= uint128(bid.amount); // update the escrow wallet balances
+                store
+                    .escrows[keccak256(abi.encode(bid.id, bid.lender, 2))]
+                    .balance -= uint128(bid.amount); // update the escrow wallet balances
                 weightedInterestRate += (bid.amount * bid.interestRate);
             }
 
             // currently after filling lps cant remove their money, should allow this later but only if the amount withdrawn is less that the balance of the escrow, balance = amount - amountFilled
 
             store.users[bid.lender].acceptedBids.push(acceptedBids[i]);
-            store.escrows[keccak256(abi.encode(bid.id,bid.lender,2))].canWithdraw = false;
+            store
+                .escrows[keccak256(abi.encode(bid.id, bid.lender, 2))]
+                .canWithdraw = false;
         }
 
         weightedInterestRate = weightedInterestRate / totalFunding;
 
-         bool success = _withdrawTokens(
+        bool success = _withdrawTokens(
             loan_request.receivingWallet,
             totalFunding,
             loan_request.principalAsset
         );
-        
-        if (success) {
-            
-            Types.Loan memory loan = store.createLoan(
-                                                loan_request.borrower,
-                                                loan_request.principalAsset,
-                                                loan_request.collateralAsset,
-                                                loan_request.principalAmount, 
-                                                loan_request.collateralAmount,
-                                                loan_request.receivingWallet, 
-                                                loan_request.loanDuration, 
-                                                uint64(weightedInterestRate),
-                                                loan_request.id, 0);
 
-            
+        if (success) {
+            Types.Loan memory loan = store.createLoan(
+                loan_request.borrower,
+                loan_request.principalAsset,
+                loan_request.collateralAsset,
+                loan_request.principalAmount,
+                loan_request.collateralAmount,
+                loan_request.receivingWallet,
+                loan_request.loanDuration,
+                uint64(weightedInterestRate),
+                loan_request.id,
+                acceptedBids
+            );
 
             emit Types.LoanFunded(loan.id, totalFunding, acceptedBids.length);
             emit Types.LoanActivated(
@@ -509,7 +534,7 @@ contract P2PLendingProtocol is
         );
     }
 
-      // ==================== LOAN REPAYMENT ====================
+    // ==================== LOAN REPAYMENT ====================
 
     /**
      * @dev Repay loan (partial or full)
@@ -547,19 +572,27 @@ contract P2PLendingProtocol is
 
         // Check if loan fully repaid
         if (loan.totalRepaid >= totalOwed) {
-            Types.Loan storage loan = s.loans[loanId];
+            Types.Loan storage loan = store.loans[loanId];
             loan.status = Types.LoanStatus.COMPLETED;
 
             store.removeLoanFromActive(loanId);
 
             // Release collateral to borrower
-            store.escrows[keccak256(abi.encode(loan.loanRequestID, initiator, 1))].canWithdraw = true;
-            store.escrows[keccak256(abi.encode(loan.loanRequestID, initiator, 1))].isLocked = false;
+            store
+                .escrows[
+                    keccak256(abi.encode(loan.loanRequestID, initiator, 1))
+                ]
+                .canWithdraw = true;
+            store
+                .escrows[
+                    keccak256(abi.encode(loan.loanRequestID, initiator, 1))
+                ]
+                .isLocked = false;
 
             emit Types.LoanCompleted(loanId, loan.borrower, block.timestamp);
         }
     }
-    
+
     // ==================== LIQUIDATION SYSTEM ====================
 
     /**
@@ -611,9 +644,8 @@ contract P2PLendingProtocol is
         emit Types.LoanLiquidated(loanId, collateralAmount, reason);
     }
 
-
     // ====================== UTILS ========================================
-    
+
     function _withdrawTokens(
         bytes memory receiver,
         uint256 amount,
@@ -647,7 +679,7 @@ contract P2PLendingProtocol is
         address zrc20,
         uint256 amount,
         bytes calldata message
-    ) external override onlyGateway {
+    ) external override virtual onlyGateway {
         (string memory action, address initiator, bytes memory data) = abi
             .decode(message, (string, address, bytes));
         bytes32 actionHash = keccak256(bytes(action));
@@ -683,9 +715,12 @@ contract P2PLendingProtocol is
                 (uint256, bytes)
             );
             _releaseLoanCollateral(initiator, loanRequestId, to);
-        }  else if (actionHash == keccak256("PLACE_LOAN_REQUEST_BID")) {
+        } else if (actionHash == keccak256("PLACE_LOAN_REQUEST_BID")) {
             // Place a bid on a loan request
-            Types.MetaBid[] memory metaBids = abi.decode(data, (Types.MetaBid[]));
+            Types.MetaBid[] memory metaBids = abi.decode(
+                data,
+                (Types.MetaBid[])
+            );
             _placeBidBatch(metaBids);
         } else if (actionHash == keccak256("RECOVER_BID_FUNDING")) {
             // Recover funding collateral from a bid
@@ -710,7 +745,6 @@ contract P2PLendingProtocol is
             revert("Invalid action");
         }
     }
-
 
     // =============== GETTERS ===============
 

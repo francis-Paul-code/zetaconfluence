@@ -1,8 +1,8 @@
 import "@nomicfoundation/hardhat-toolbox";
-import { HardhatUserConfig } from "hardhat/config";
-import * as dotenv from "dotenv";
 
 import { getHardhatConfig } from "@zetachain/toolkit/utils";
+import * as dotenv from "dotenv";
+import { HardhatUserConfig } from "hardhat/config";
 
 dotenv.config();
 

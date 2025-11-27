@@ -19,8 +19,6 @@ export const fetchABI = async (url: string) => {
 export const getContract = async (abiUrl?: string) => {
   const provider = new ethers.JsonRpcProvider(RPC_URL);
   const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
-
-
   const abi = abiUrl
     ? await fetchABI(abiUrl)
     : (await import("../abi/P2PLendingProtocol.json")).default;
