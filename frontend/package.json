@@ -10,14 +10,24 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.1.17",
+    "@types/react-router": "^5.1.20",
+    "@web3icons/react": "^4.1.2",
     "@zetachain/toolkit": "16.2.0",
     "@zetachain/wallet": "1.0.13",
+    "abitype": "^1.2.0",
+    "classnames": "^2.5.1",
     "clsx": "^2.1.1",
     "ethers": "^6.13.2",
+    "motion": "^12.23.24",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-icons": "^5.5.0",
+    "react-router": "^7.9.6",
     "react-use": "^17.6.0",
-    "viem": "^2.31.7"
+    "sass": "^1.94.2",
+    "tailwindcss": "^4.1.17",
+    "viem": "^2.40.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.1",

@@ -1,0 +1,33 @@
+@import 'tailwindcss';
+@import 'tailwindcss/utilities';
+
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+@custom-variant light (&:where([data-theme=light], [data-theme=light] *));
+@theme {
+  --color-primary: #34d058;
+  --color-background_light: #eff3f6;
+  --color-background_dark: #1c2025;
+  --color-background_dark-tint: #121212;
+  --color-secondary: #a94064;
+  --font-roboto: 'Roboto', sans-serif;
+  --font-poppins: 'poppins', sans-serif;
+}
+@layer base {
+  body {
+    @apply bg-background_light text-gray-900;
+    font-family: var(--font-roboto);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-bold;
+  }
+
+  a {
+    @apply text-primary hover:underline;
+  }
+}

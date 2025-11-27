@@ -1,29 +1,46 @@
-import { UniversalSignInContextProvider } from '@zetachain/wallet/react';
+import './utils/axios';
 
-import { AppContent } from './AppContent';
-import { Header } from './components/Header';
-import { USE_DYNAMIC_WALLET } from './constants/wallets';
-import { UnisatWalletProvider } from './context/UnisatWalletProvider';
-import { useTheme } from './hooks/useTheme';
+import { BrowserRouter, Route, Routes } from 'react-router';
 
-function App() {
-  const { theme } = useTheme();
+import Dashboard from './components/layout/Dashboard';
+import Main from './components/layout/Main';
+import { ThemeProvider } from './context/ThemeProvider';
+import { getMainRoutes } from './utils/routes';
 
+const App = () => {
   return (
-    <UnisatWalletProvider>
-      {USE_DYNAMIC_WALLET ? (
-        <UniversalSignInContextProvider environment="sandbox" theme={theme}>
-          <Header />
-          <AppContent />
-        </UniversalSignInContextProvider>
-      ) : (
-        <>
-          <Header />
-          <AppContent />
-        </>
-      )}
-    </UnisatWalletProvider>
+    <ThemeProvider>
+      <BrowserRouter>
+        <Routes>
+          {getMainRoutes().map((route) =>
+            route.dashboard ? (
+              <Route
+                path={route.path}
+                element={
+                  <Dashboard>
+                    <route.component />
+                  </Dashboard>
+                }
+              />
+            ) : (
+              <Route
+                path={route.path}
+                element={
+                  route.isLanding ? (
+                    <route.component />
+                  ) : (
+                    <Main>
+                      <route.component />
+                    </Main>
+                  )
+                }
+              />
+            )
+          )}
+        </Routes>
+      </BrowserRouter>
+    </ThemeProvider>
   );
-}
+};
 
 export default App;
