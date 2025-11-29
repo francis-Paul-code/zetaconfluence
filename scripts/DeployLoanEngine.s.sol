@@ -23,6 +23,13 @@ contract DeployP2PLendingProtocol is Script {
         console.log("Deployer address:", msg.sender);
         console.log("Chain ID:", block.chainid);
 
+        // Validate required addresses
+        require(admin != address(0), "Admin address cannot be zero");
+        require(systemContract != address(0), "System contract address cannot be zero");
+        require(gatewayContract != address(0), "Gateway contract address cannot be zero");
+        require(uniswapRouter != address(0), "Uniswap router address cannot be zero");
+        require(pythContract != address(0), "Pyth contract address cannot be zero");
+
         vm.startBroadcast();
 
         // Deploy the contract
