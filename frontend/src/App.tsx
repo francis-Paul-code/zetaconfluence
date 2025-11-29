@@ -8,6 +8,7 @@ import { ThemeProvider } from './context/ThemeProvider';
 import { getMainRoutes } from './utils/routes';
 
 const App = () => {
+ 
   return (
     <ThemeProvider>
       <BrowserRouter>

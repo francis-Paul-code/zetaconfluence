@@ -1,97 +1,135 @@
-// @ts-nocheck - still under dev
+import { evmCall, evmDepositAndCall } from '@zetachain/toolkit/chains/evm';
+// import {
+//   solanaCall,
+//   solanaDepositAndCall,
+// } from '@zetachain/toolkit/chains/solana';
+// import { type PrimaryWallet } from '@zetachain/wallet';
+// import { getSolanaWalletAdapter } from '@zetachain/wallet/solana';
+import type { ethers } from 'ethers';
 
-import {
-  createPublicClient,
-  http,
-  parseEther,
-  toHex,
-  type TransactionReceipt,
-  type WalletClient,
-  zeroAddress,
-} from 'viem'
-
-import { EVM_GATEWAY_ABI } from './abis'
-
-type address = `0x${string}`;
-async function waitFor3Confirm({
-  client,
-  hash,
-}: {
-  client: WalletClient
-  hash: address
-}): Promise<TransactionReceipt> {
-  const publicClient = createPublicClient({
-    chain: client.chain!,
-    transport: http(),
-  })
-
-  return await publicClient.waitForTransactionReceipt({
-    hash,
-    confirmations: 3,
-  })
+interface CallParams {
+  receiver: string;
+  types: string[];
+  values: (string | bigint | boolean)[];
+  revertOptions: {
+    callOnRevert: boolean;
+    revertAddress?: string;
+    revertMessage: string;
+    abortAddress?: string;
+    onRevertGasLimit?: string | number | bigint;
+  };
+}
+interface depositAndCallParams {
+  values: (string | bigint | boolean)[];
+  receiver: string;
+  revertOptions: {
+    callOnRevert: boolean;
+    revertMessage: string;
+    revertAddress?: string | undefined;
+    abortAddress?: string | undefined;
+    onRevertGasLimit?: string | number | bigint | undefined;
+  };
+  amount: string;
+  types: string[];
+  token?: string | undefined;
 }
 
-export async function depositAndCall({
-  client,
-  gateway,
-  payload,
-  etherAmount,
-}: {
-  client: WalletClient
-  gateway: address
-  payload: address | Uint8Array
-  etherAmount: string
-}) {
-  const payloadHex = typeof payload === 'string' ? payload : toHex(payload)
+export default {
+  evm: {
+    gatewayCall: async function (
+      callParams: CallParams,
+      signer: ethers.AbstractSigner
+    ) {
+      try {
+        const evmCallOptions = {
+          signer,
+          gateway: import.meta.env.VITE_EVM_GATEWAY_ADDRESS,
+          txOptions: {
+            gasLimit: 1000000,
+          },
+        };
 
-  const hash = await client.writeContract({
-    address: gateway,
-    abi: EVM_GATEWAY_ABI,
-    functionName: 'depositAndCall',
-    args: [
-      process.env.NEXT_PUBLIC_LENDING_POOL as address,
-      payloadHex,
-      {
-        revertAddress: client.account?.address as address,
-        callOnRevert: true,
-        abortAddress: zeroAddress,
-        revertMessage: toHex('Revert'),
-        onRevertGasLimit: BigInt(100000000),
-      },
-    ],
-    value: parseEther(etherAmount),
-  } )
+        const result = await evmCall(callParams, evmCallOptions);
 
-  return await waitFor3Confirm({ client, hash })
-}
+        await result.wait();
+        return result;
+      } catch (error) {
+        console.error('Error in gatewayEVMCall:', error);
+        throw error;
+      }
+    },
 
-export async function gatewayCall({
-  client,
-  gateway,
-  payload,
-}: {
-  client: WalletClient
-  gateway: address
-  payload: address | Uint8Array
-}) {
-  const payloadHex = typeof payload === 'string' ? payload : toHex(payload)
+    depositAndCall: async function (
+      callParams: depositAndCallParams,
+      signer: ethers.AbstractSigner
+    ) {
+      try {
+        const evmCallOptions = {
+          signer,
+          gateway:import.meta.env.VITE_EVM_GATEWAY_ADDRESS,
+          txOptions: {
+            gasLimit: 1000000,
+          },
+        };
 
-  const hash = await client.writeContract({
-    address: gateway,
-    abi: EVM_GATEWAY_ABI,
-    functionName: 'call',
-    args: [
-      process.env.NEXT_PUBLIC_LENDING_POOL as address,
-      payloadHex,
-      {
-        revertAddress: client.account?.address as address,
-        callOnRevert: false,
-        abortAddress: zeroAddress,
-        revertMessage: '0x',
-        onRevertGasLimit: BigInt(200000),
-      },
-    ],
-  })
+        const result = await evmDepositAndCall(callParams, evmCallOptions);
 
-  return await waitFor3Confirm({ client, hash })
-}
+        await result.wait();
+        return result;
+      } catch (error) {
+        console.error('Error in gatewayEVMDepositAndCall:', error);
+        throw error;
+      }
+    },
+  },
+
+  // solana: {
+  //   gatewayCall: async function (
+  //     callParams: CallParams,
+  //     primaryWallet: PrimaryWallet,
+  //     chainId: string
+  //   ) {
+  //     try {
+  //       const walletAdapter = await getSolanaWalletAdapter(primaryWallet);
+
+  //       const solanaCallOptions = {
+  //         gateway: process.env.VITE_SOL_GATEWAY_ADDRESS,
+  //         signer: walletAdapter,
+  //         chainId,
+  //       };
+
+  //       const result = await solanaCall(callParams, solanaCallOptions);
+  //       return result;
+  //     } catch (error) {
+  //       console.error('Error in gatewaySOLCall:', error);
+  //       throw error;
+  //     }
+  //   },
+  //   depositAndCall: async function (
+  //     callParams: depositAndCallParams,
+  //     primaryWallet: PrimaryWallet,
+  //     chainId: string
+  //   ) {
+  //     try {
+  //       const walletAdapter = await getSolanaWalletAdapter(primaryWallet);
+
+  //       const solanaCallOptions = {
+  //         gateway: process.env.VITE_SOL_GATEWAY_ADDRESS,
+  //         signer: walletAdapter,
+  //         chainId,
+  //       };
+
+  //       const result = await solanaDepositAndCall(
+  //         callParams,
+  //         solanaCallOptions
+  //       );
+  //       return result;
+  //     } catch (error) {
+  //       console.error('Error in gatewaySOLDepositAndCall:', error);
+  //       throw error;
+  //     }
+  //   },
+  // },
+
+  btc: {},
+};

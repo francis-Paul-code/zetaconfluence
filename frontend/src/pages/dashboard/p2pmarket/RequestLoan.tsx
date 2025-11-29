@@ -1,45 +1,249 @@
-import React, { useState } from 'react';
-import { FaMoneyBillWave, FaClock, FaShieldAlt, FaWallet } from 'react-icons/fa';
+import { NetworkIcon,TokenIcon } from '@web3icons/react/dynamic';
+import classNames from 'classnames';
+import { motion } from 'motion/react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import {
+  FaClock,
+  FaMoneyBillWave,
+  FaShieldAlt,
+  FaWallet,
+} from 'react-icons/fa';
+
+import CustomSelect from '../../../components/CustomSelect';
+import DropField from '../../../components/DropField';
+import type { HexAddr } from '../../../config/viem';
+import type { MetaLoanRequest } from '../../../constants/loans';
+import { useLoans } from '../../../hooks/useLoans';
+import { useWallet } from '../../../hooks/useWallet';
 
 const RequestLoan = () => {
-  const [formData, setFormData] = useState({
-    principleAsset: 'ETH',
-    principleAmount: '',
-    receivingWallet: '',
-    repaymentDeadline: '',
-    interestRate: '',
-    repaymentAsset: 'ETH',
-    collateralAsset: 'USDC',
-    collateralAmount: '',
-    requestExpiry: '72'
-  });
+  const { protocol } = useLoans();
+  const { selectedProviders, wallets, supportedAssets } = useWallet();
+
+  const [formData, setFormData] = useState<{
+    principleAsset: HexAddr;
+    principleAmount: number;
+    receivingWallet: HexAddr;
+    repaymentDeadline: Date;
+    interestRate: number;
+    collateralAsset: HexAddr;
+    collateralAmount: number;
+    requestExpiry: any;
+  }>(
+    {} as {
+      principleAsset: HexAddr;
+      principleAmount: number;
+      receivingWallet: HexAddr;
+      repaymentDeadline: Date;
+      interestRate: number;
+      collateralAsset: HexAddr;
+      collateralAmount: number;
+      requestExpiry: any;
+    }
+  );
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const supportedAssets = ['ETH', 'BTC', 'USDC', 'USDT', 'DAI'];
-  const collateralAssets = ['USDC', 'USDT', 'DAI', 'ETH', 'BTC'];
+  const inputs: Record<
+    'principal' | 'collateral' | 'timeline',
+    {
+      name: string;
+      colSpan?: 'full' | 'auto';
+      type: string;
+      inputType: 'field' | 'text-box' | 'select' | 'hybrid';
+      value?: unknown;
+      key: string;
+      options?: {
+        name: string;
+        data: unknown;
+        value: string;
+        renderLabel?: (data: unknown) => React.ReactNode;
+      }[];
+      placeholder?: string;
+      maxLength?: number;
+    }[]
+  > = useMemo(
+    () => ({
+      principal: [
+        {
+          name: 'Principle Asset',
+          colSpan: 'auto',
+          type: 'select',
+          inputType: 'select',
+          value: formData.principleAsset,
+          key: 'principleAsset',
+          options: Object.values(supportedAssets).map((i) => ({
+            name: i.name,
+            data: i,
+            value: i.address! + ':' + i.chainId,
+            renderLabel: (data: typeof i) => (
+              <div className="w-full h-auto flex items-center gap-2 py-2">
+                <div className="h-auto w-auto mr-2 relative">
+                  <div className="size-[20px] rounded-full overflow-hidden">
+                    <TokenIcon
+                      symbol={data.symbol!.toLocaleLowerCase()}
+                      variant="background"
+                      size="65"
+                      className="size-full"
+                    />
+                  </div>
+                  <div className="absolute size-[10px] z-[1] rounded-full overflow-hidden bottom-0 right-0">
+                    <NetworkIcon
+                      className="size-full"
+                      id={data.network}
+                      variant="background"
+                      size="64"
+                    />
+                  </div>
+                </div>
+                <div className="text-base w-auto dark:text-white text-gray-800">
+                  {data.name}
+                </div>
+              </div>
+            ),
+          })),
+        },
+        {
+          name: 'Principle Amount',
+          colSpan: 'auto',
+          type: 'number',
+          inputType: 'field',
+          value: formData.principleAmount,
+          key: 'principleAmount',
+          placeholder: '0.000',
+        },
+        {
+          name: 'Recieving Address',
+          colSpan: 'full',
+          type: 'text',
+          inputType: 'hybrid',
+          value: formData.receivingWallet,
+          key: 'recievingWallet',
+          placeholder: '0x...',
+          options: wallets.map((i) => ({
+            name: i.account!,
+            value: i.account!,
+            data: i,
+            renderLabel: (data: typeof i) => (
+              <div className="w-full h-auto flex items-center gap-2 py-2">
+                <div className="size-[20px] flex mr-3 items-center">
+                  <img
+                    src={data.eip6963.info?.icon}
+                    alt={data.eip6963.info.name}
+                    className="size-full object-cover"
+                  />
+                </div>
+                <div className="text-base w-auto dark:text-white text-gray-800">
+                  {data.account}
+                </div>
+              </div>
+            ),
+          })),
+        },
+        {
+          name: 'Interest Rate',
+          colSpan: 'full',
+          type: 'number',
+          inputType: 'field',
+          value: formData.interestRate,
+          key: 'interestRate',
+        },
+      ],
+      collateral: [
+        {
+          name: 'Collateral Asset',
+          colSpan: 'auto',
+          type: 'select',
+          inputType: 'select',
+          value: formData.collateralAsset,
+          key: 'collateralAsset',
+          options: Object.values(supportedAssets).map((i) => ({
+            name: i.name,
+            data: i,
+            value: i.address! + ':' + i.chainId,
+            renderLabel: (data: typeof i) => (
+              <div className="w-full h-auto flex items-center gap-2 py-2">
+                <div className="h-auto w-auto mr-2 relative">
+                  <div className="size-[20px] rounded-full overflow-hidden">
+                    <TokenIcon
+                      symbol={data.symbol!.toLocaleLowerCase()}
+                      variant="background"
+                      size="65"
+                      className="size-full"
+                    />
+                  </div>
+                  <div className="absolute size-[10px] z-[1] rounded-full overflow-hidden bottom-0 right-0">
+                    <NetworkIcon
+                      className="size-full"
+                      id={data.network}
+                      variant="background"
+                      size="64"
+                    />
+                  </div>
+                </div>
+                <div className="text-base w-auto dark:text-white text-gray-800">
+                  {data.name}
+                </div>
+              </div>
+            ),
+          })),
+        },
+        {
+          name: 'Collateral Amount',
+          colSpan: 'auto',
+          type: 'number',
+          inputType: 'field',
+          value: formData.collateralAmount,
+          key: 'collateralAmount',
+        },
+      ],
+      timeline: [
+        {
+          name: 'Repayment Deadline',
+          colSpan: 'auto',
+          type: 'date',
+          inputType: 'field',
+          value: formData.repaymentDeadline,
+          key: 'repaymentDeadline',
+        },
+        {
+          name: 'Request Expiry',
+          colSpan: 'auto',
+          type: 'number',
+          inputType: 'field',
+          value: formData.requestExpiry,
+          key: 'requestExpiry',
+        },
+      ],
+    }),
+    [formData]
+  );
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false);
-      alert('Loan request created successfully!');
-    }, 2000);
+
+    if (protocol) {
+      console.log('calling');
+      protocol.getSupportedAssets(wallets[0], selectedProviders[0]);
+    }
   };
 
+  const collateral_ratio = useMemo(() => {
+    return 126;
+  }, [formData]);
   return (
-    <div className="w-full h-full overflow-hidden bg-gray-50 rounded-2xl dark:bg-background_dark p-6">
-      <div className="w-full h-full overflow-y-scroll">
+    <div className="w-full h-full overflow-hidden bg-gray-50 rounded-2xl dark:bg-background_dark p-2 ">
+      <div className="w-full h-full overflow-y-scroll p-6">
         {/* Header */}
         <div className="w-full h-auto flex items-center mb-8 gap-3">
           <span className="size-[30px] cursor-pointer overflow-hidden text-primary">
@@ -53,93 +257,55 @@ const RequestLoan = () => {
         {/* Form */}
         <div className="space-y-6">
           {/* Loan Details Section */}
-          <div className="bg-white dark:bg-background_dark-tint rounded-xl p-6 border border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-medium mb-4 text-gray-800 dark:text-gray-200 flex items-center gap-2">
-              <FaMoneyBillWave className="text-primary" />
-              Loan Details
-            </h3>
-            
+          <div className="bg-white dark:bg-background_dark-tint rounded-xl p-6 ">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Principle Asset
-                </label>
-                <select
-                  name="principleAsset"
-                  value={formData.principleAsset}
-                  onChange={handleInputChange}
-                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-transparent"
+              {inputs.principal.map((input) => (
+                <div
+                  key={input.key}
+                  className={classNames({
+                    'col-span-full': input.colSpan === 'full',
+                  })}
                 >
-                  {supportedAssets.map(asset => (
-                    <option key={asset} value={asset}>{asset}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Principle Amount
-                </label>
-                <input
-                  type="number"
-                  name="principleAmount"
-                  value={formData.principleAmount}
-                  onChange={handleInputChange}
-                  placeholder="0.00"
-                  step="0.01"
-                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-transparent"
-                  required
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Receiving Wallet Address
-                </label>
-                <input
-                  type="text"
-                  name="receivingWallet"
-                  value={formData.receivingWallet}
-                  onChange={handleInputChange}
-                  placeholder="0x..."
-                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-transparent"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Interest Rate (%)
-                </label>
-                <input
-                  type="number"
-                  name="interestRate"
-                  value={formData.interestRate}
-                  onChange={handleInputChange}
-                  placeholder="5.0"
-                  step="0.1"
-                  min="0"
-                  max="100"
-                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-transparent"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Repayment Asset
-                </label>
-                <select
-                  name="repaymentAsset"
-                  value={formData.repaymentAsset}
-                  onChange={handleInputChange}
-                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-transparent"
-                >
-                  {supportedAssets.map(asset => (
-                    <option key={asset} value={asset}>{asset}</option>
-                  ))}
-                </select>
-              </div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {input.name}
+                  </label>
+                  {input.inputType === 'select' ? (
+                    <div className="w-auto h-auto ">
+                      <CustomSelect
+                        name={input.name}
+                        value={formData[input.key as keyof typeof formData]}
+                        onChange={(val) =>
+                          setFormData((prev) => ({ ...prev, [input.key]: val }))
+                        }
+                        options={input.options || []}
+                        placeholder={input.placeholder}
+                      />
+                    </div>
+                  ) : input.inputType === 'field' ? (
+                    <input
+                      type={input.type}
+                      name={input.key}
+                      value={formData[input.key as keyof typeof formData]}
+                      onChange={handleInputChange}
+                      placeholder={input.placeholder}
+                      className="w-full p-3 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary/40 focus:border-transparent focus:outline-none"
+                      required
+                    />
+                  ) : input.inputType === 'hybrid' ? (
+                    <div className="flex items-center w-full">
+                      <DropField
+                        key={input.key}
+                        type={input.type}
+                        value={setFormData}
+                        formValues={formData}
+                        maxLength={input.maxLength}
+                        options={input.options}
+                        placeholder={input.placeholder}
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              ))}
             </div>
           </div>
 
@@ -149,46 +315,87 @@ const RequestLoan = () => {
               <FaShieldAlt className="text-primary" />
               Collateral (Min 110% of loan value)
             </h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Collateral Asset
-                </label>
-                <select
-                  name="collateralAsset"
-                  value={formData.collateralAsset}
-                  onChange={handleInputChange}
-                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-transparent"
-                >
-                  {collateralAssets.map(asset => (
-                    <option key={asset} value={asset}>{asset}</option>
-                  ))}
-                </select>
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Collateral Amount
-                </label>
-                <input
-                  type="number"
-                  name="collateralAmount"
-                  value={formData.collateralAmount}
-                  onChange={handleInputChange}
-                  placeholder="0.00"
-                  step="0.01"
-                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-transparent"
-                  required
-                />
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {inputs.collateral.map((input) => (
+                <div
+                  key={input.key}
+                  className={classNames({
+                    'col-span-full': input.colSpan === 'full',
+                  })}
+                >
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {input.name}
+                  </label>
+                  {input.inputType === 'select' ? (
+                    <div className="w-auto h-auto ">
+                      <CustomSelect
+                        name={input.name}
+                        value={formData[input.key as keyof typeof formData]}
+                        onChange={(val) =>
+                          setFormData((prev) => ({ ...prev, [input.key]: val }))
+                        }
+                        options={input.options || []}
+                        placeholder={input.placeholder}
+                      />
+                    </div>
+                  ) : input.inputType === 'field' ? (
+                    <input
+                      type={input.type}
+                      name={input.key}
+                      value={formData[input.key as keyof typeof formData]}
+                      onChange={handleInputChange}
+                      placeholder={input.placeholder}
+                      className="w-full p-3 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary/40 focus:border-transparent focus:outline-none"
+                      required
+                    />
+                  ) : input.inputType === 'hybrid' ? (
+                    <div className="flex items-center w-full">
+                      <DropField
+                        key={input.key}
+                        type={input.type}
+                        value={setFormData}
+                        formValues={formData}
+                        maxLength={input.maxLength}
+                        options={input.options}
+                        placeholder={input.placeholder}
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              ))}
             </div>
 
             {/* Collateral Ratio Display */}
-            <div className="mt-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
+            <div className="mt-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg w w-full ">
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Collateral Ratio: <span className="font-medium text-primary">125%</span> (Recommended)
+                Collateral Ratio:{' '}
+                <span className="font-medium text-primary">125%</span>{' '}
+                (Recommended)
               </p>
+              <div
+                className={
+                  'w-full overflow-hidden flex mt-2 h-2 rounded-xl ' +
+                  classNames({
+                    'bg-primary/30': collateral_ratio > 125,
+                    'bg-red-500/30': collateral_ratio <= 100,
+                  })
+                }
+              >
+                <motion.div
+                  initial={{ width: '0%' }}
+                  animate={{
+                    width: `${Math.floor((collateral_ratio / 200) * 100)}%`,
+                  }}
+                  className={
+                    'h-full rounded-xl ' +
+                    classNames({
+                      'bg-primary': collateral_ratio > 125,
+                      'bg-red-500': collateral_ratio <= 100,
+                    })
+                  }
+                />
+              </div>
             </div>
           </div>
 
@@ -198,38 +405,55 @@ const RequestLoan = () => {
               <FaClock className="text-primary" />
               Timeline
             </h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Repayment Deadline
-                </label>
-                <input
-                  type="datetime-local"
-                  name="repaymentDeadline"
-                  value={formData.repaymentDeadline}
-                  onChange={handleInputChange}
-                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-transparent"
-                  required
-                />
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Request Expiry (hours)
-                </label>
-                <select
-                  name="requestExpiry"
-                  value={formData.requestExpiry}
-                  onChange={handleInputChange}
-                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-transparent"
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {inputs.timeline.map((input) => (
+                <div
+                  key={input.key}
+                  className={classNames({
+                    'col-span-full': input.colSpan === 'full',
+                  })}
                 >
-                  <option value="24">24 hours</option>
-                  <option value="48">48 hours</option>
-                  <option value="72">72 hours</option>
-                  <option value="168">1 week</option>
-                </select>
-              </div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {input.name}
+                  </label>
+                  {input.inputType === 'select' ? (
+                    <div className="w-auto h-auto ">
+                      <CustomSelect
+                        name={input.name}
+                        value={formData[input.key as keyof typeof formData]}
+                        onChange={(val) =>
+                          setFormData((prev) => ({ ...prev, [input.key]: val }))
+                        }
+                        options={input.options || []}
+                        placeholder={input.placeholder}
+                      />
+                    </div>
+                  ) : input.inputType === 'field' ? (
+                    <input
+                      type={input.type}
+                      name={input.key}
+                      value={formData[input.key as keyof typeof formData]}
+                      onChange={handleInputChange}
+                      placeholder={input.placeholder}
+                      className="w-full p-3 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary/40 focus:border-transparent focus:outline-none"
+                      required
+                    />
+                  ) : input.inputType === 'hybrid' ? (
+                    <div className="flex items-center w-full">
+                      <DropField
+                        key={input.key}
+                        type={input.type}
+                        value={setFormData}
+                        formValues={formData}
+                        maxLength={input.maxLength}
+                        options={input.options}
+                        placeholder={input.placeholder}
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              ))}
             </div>
           </div>
 

@@ -1,12 +1,12 @@
-import { type PrimaryWallet } from '@zetachain/wallet';
-import { getSigner, getWeb3Provider } from '@zetachain/wallet/ethers';
 import { ethers } from 'ethers';
 
+import type { Wallet } from '../constants/chains';
 import type { EIP6963ProviderDetail } from '../types/wallet';
+import { getSigner } from './walletHelpers';
 
 interface GetSignerAndProviderArgs {
   selectedProvider: EIP6963ProviderDetail | null;
-  primaryWallet: PrimaryWallet | null;
+  primaryWallet: Wallet;
 }
 
 interface GetSignerAndProviderResult {
@@ -21,12 +21,11 @@ export const getSignerAndProvider = async ({
   // If we have a Dynamic wallet, use Dynamic's ethers integration
   if (primaryWallet) {
     try {
-      const provider = await getWeb3Provider(primaryWallet);
       const signer = await getSigner(primaryWallet);
 
       return {
         signer: signer,
-        provider: provider,
+        provider: new ethers.BrowserProvider(primaryWallet.eip6963.provider),
       };
     } catch (error) {
       console.error('Failed to get Dynamic signer/provider:', error);
