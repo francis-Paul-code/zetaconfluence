@@ -1,0 +1,24 @@
+{
+  "ts-node": { "files": true },
+  "compileOnSave": false,
+  "compilerOptions": {
+    "target": "es2017",
+    "lib": ["es6", "DOM"],
+    "module": "commonjs",
+    "types": ["node"],
+    "resolveJsonModule": true,
+    "moduleResolution": "node",
+    "allowJs": true,
+    "outDir": "./dist",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "noImplicitAny": true,
+    "removeComments": true,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "baseUrl": "."
+  },
+  "include": ["src/**/*", "src/types/index.d.ts", ".d.ts"],
+  "exclude": ["build", "node_modules", "public"]
+}
