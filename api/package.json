@@ -1,0 +1,41 @@
+{
+  "name": "zetaconfluence-api",
+  "packageManager": "yarn@3.6.4",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "author": {
+    "name": "Francis Paul Musango",
+    "email": "francis.musango@nguro.com"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon",
+    "clean": "rimraf node_modules package-lock.json dist ",
+    "build": "tsc --build tsconfig.json",
+    "start": "node dist/index.js"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@types/ws": "^8.18.1",
+    "nodemon": "^3.1.11",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@fastify/autoload": "^6.3.1",
+    "@fastify/cors": "^11.1.0",
+    "@fastify/env": "^5.0.3",
+    "@fastify/formbody": "^8.0.2",
+    "@fastify/response-validation": "^3.0.3",
+    "@fastify/swagger": "^9.6.1",
+    "@fastify/swagger-ui": "^5.2.3",
+    "axios": "^1.13.2",
+    "bcrypt": "^6.0.0",
+    "ethers": "^6.15.0",
+    "fastify": "^5.6.2",
+    "fastify-socket.io": "^5.1.0",
+    "fastify-type-provider-zod": "^6.1.0",
+    "ts-node": "^10.9.2",
+    "zod": "^4.1.13"
+  }
+}
