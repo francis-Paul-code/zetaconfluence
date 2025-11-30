@@ -122,6 +122,7 @@ export interface Wallet {
   balances?: WalletToken[];
 }
 
+
 export interface ISupportedAsset {
   id: string;
   name: string;

@@ -120,7 +120,6 @@ export const useWalletConnection = (providers: EIP6963ProviderDetail[]) => {
   );
 
   const reconnectWallet = async () => {
-    console.log('a chnage is to happen');
     try {
       setReconnecting(true);
       // Try to find the saved provider using multiple methods
@@ -166,9 +165,24 @@ export const useWalletConnection = (providers: EIP6963ProviderDetail[]) => {
         if (_provider) {
           if (savedProviders[_provider.info.rdns]) continue;
 
-          const accounts = (await _provider.provider.request({
+          let accounts = (await _provider.provider.request({
             method: 'eth_accounts',
           })) as string[];
+
+          if (!accounts || accounts.length === 0) {
+            try {
+              accounts = (await _provider.provider.request({
+                method: 'eth_requestAccounts',
+              })) as string[];
+            } catch (error) {
+              // User rejected or error occurred, skip this provider
+              console.log(
+                'User rejected reconnection for:',
+                _provider.info.name
+              );
+              continue;
+            }
+          }
 
           if (
             accounts &&
@@ -193,12 +207,11 @@ export const useWalletConnection = (providers: EIP6963ProviderDetail[]) => {
     } finally {
       setReconnecting(false);
     }
-  };
+  }
 
   useEffect(() => {
     if (!savedWalletData) return;
 
-    console.log('effecting a change');
     if (providers.length > 0) {
       // Add a small delay to allow providers to load
       const timeout = setTimeout(async () => {
@@ -207,7 +220,7 @@ export const useWalletConnection = (providers: EIP6963ProviderDetail[]) => {
 
       return () => clearTimeout(timeout);
     }
-  }, [providers]);
+  }, [providers, savedWalletData]);
 
   return {
     selectedProviders,

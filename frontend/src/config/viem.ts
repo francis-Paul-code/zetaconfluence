@@ -5,6 +5,7 @@ import { mainnet, zetachain, zetachainAthensTestnet } from 'viem/chains';
 import { abi as PROTOCOL_ABI } from '../constants/abis';
 
 export type HexAddr = `0x${string}`;
+
 const currentChain = zetachainAthensTestnet;
 type ReadArgs = {
   rpcUrl?: string;

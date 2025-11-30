@@ -8,7 +8,7 @@ interface LoansContextType {
   loading: boolean;
   error: string | null;
   createLoanRequest: (data: any) => Promise<void>;
-  createLoanBid: (data: any) => Promise<void>; 
+  createLoanBid: (data: any) => Promise<void>;
   // acceptLoanBid: (bidId: string) => Promise<void>;
   // cancelLoanRequest: (requestId: string) => Promise<void>;
   // cancelLoanBid: (bidId: string) => Promise<void>;
@@ -21,6 +21,7 @@ export const LoansContext = createContext<LoansContextType>({
   error: null,
   createLoanRequest: async () => {},
   createLoanBid: async () => {},
+  getSupportedAssets: async () => {},
   // acceptLoanBid: async () => {},
   // cancelLoanRequest: async () => {},
   // cancelLoanBid: async () => {},
