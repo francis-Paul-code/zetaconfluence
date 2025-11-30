@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NetworkIcon,TokenIcon } from '@web3icons/react/dynamic';
 import classNames from 'classnames';
 import { motion } from 'motion/react';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   FaClock,
   FaMoneyBillWave,
@@ -12,7 +13,6 @@ import {
 import CustomSelect from '../../../components/CustomSelect';
 import DropField from '../../../components/DropField';
 import type { HexAddr } from '../../../config/viem';
-import type { MetaLoanRequest } from '../../../constants/loans';
 import { useLoans } from '../../../hooks/useLoans';
 import { useWallet } from '../../../hooks/useWallet';
 
@@ -57,7 +57,7 @@ const RequestLoan = () => {
         name: string;
         data: unknown;
         value: string;
-        renderLabel?: (data: unknown) => React.ReactNode;
+        renderLabel?: (data: any) => React.ReactNode;
       }[];
       placeholder?: string;
       maxLength?: number;
