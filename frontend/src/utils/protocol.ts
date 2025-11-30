@@ -53,7 +53,7 @@ const checkQueueLength = async (
     });
     const res: MulticallReturnType = await contractViewMultiCall({ client });
     for (let i = 0; i < res.length; i++) {
-      console.log('call result', res[i])
+      console.log('call result', res[i]);
       if (!res[i].error) {
         removeFromQueue(queue, Array.from(queue.keys())[i]);
       } else {
@@ -142,21 +142,23 @@ export default {
 
   createLoanBid: async (
     req: MetaBid,
-    provider?: EIP6963ProviderDetail['provider'],
-    bitcoinProvider?: any
+    wallet: Wallet,
+    evmProvider?: EIP6963ProviderDetail,
+    bitcoinProvider?: any,
+    solanaProvider?: any
   ) => {},
 
   getSupportedAssets: async (
     wallet: Wallet,
     evmProvider?: EIP6963ProviderDetail,
-    _bitcoinProvider?: any,
-    _solanaProvider?: any
+    bitcoinProvider?: any,
+    solanaProvider?: any
   ) => {
     try {
       const req: RequestQueueItem = {
-        bitcoinProvider: _bitcoinProvider,
+        bitcoinProvider,
         evmProvider,
-        solanaProvider: _solanaProvider,
+        solanaProvider,
         wallet,
         data: '',
         functionName: 'getSupportedAssets' as ContractFunctionNames,
@@ -165,13 +167,12 @@ export default {
       // Add to queue and check length
       addToQueue(userCallsQueue, 'supported_assets', req);
 
-      return null;
+      return
     } catch (error) {
       console.error('Supported Assets call failed', error);
       return null;
     }
   },
-
 };
 
 const contractViewMultiCall = async ({ client }: { client: WalletClient }) => {
