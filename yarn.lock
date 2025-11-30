@@ -8468,59 +8468,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"hello@workspace:.":
-  version: 0.0.0-use.local
-  resolution: "hello@workspace:."
-  dependencies:
-    "@chainlink/contracts": ^1.5.0
-    "@coral-xyz/anchor": 0.30.0
-    "@ethersproject/abi": ^5.4.7
-    "@ethersproject/providers": ^5.4.7
-    "@nomicfoundation/hardhat-chai-matchers": ^1.0.0
-    "@nomicfoundation/hardhat-foundry": ^1.1.2
-    "@nomicfoundation/hardhat-network-helpers": ^1.0.0
-    "@nomicfoundation/hardhat-toolbox": ^2.0.0
-    "@nomiclabs/hardhat-ethers": ^2.0.0
-    "@nomiclabs/hardhat-etherscan": ^3.0.0
-    "@openzeppelin/contracts": ^5.4.0
-    "@openzeppelin/contracts-upgradeable": 5.4.0
-    "@pythnetwork/pyth-sdk-solidity": ^4.3.1
-    "@solana-developers/helpers": ^2.4.0
-    "@solana/spl-memo": ^0.2.5
-    "@solana/web3.js": ^1.95.8
-    "@typechain/ethers-v5": ^10.1.0
-    "@typechain/hardhat": ^6.1.2
-    "@types/chai": ^4.2.0
-    "@types/mocha": ">=9.1.0"
-    "@types/node": ">=12.0.0"
-    "@typescript-eslint/eslint-plugin": ^5.59.9
-    "@typescript-eslint/parser": ^5.59.9
-    "@zetachain/protocol-contracts": 14.1.0-rc1
-    "@zetachain/toolkit": ^16.2.2
-    axios: ^1.3.6
-    chai: ^4.2.0
-    dotenv: ^16.0.3
-    envfile: ^6.18.0
-    eslint: ^8.42.0
-    eslint-config-prettier: ^8.8.0
-    eslint-import-resolver-typescript: ^3.5.5
-    eslint-plugin-import: ^2.27.5
-    eslint-plugin-prettier: ^4.2.1
-    eslint-plugin-simple-import-sort: ^10.0.0
-    eslint-plugin-sort-keys-fix: ^1.1.2
-    eslint-plugin-typescript-sort-keys: ^2.3.0
-    ethers: ^5.4.7
-    hardhat: ^2.17.2
-    hardhat-gas-reporter: ^1.0.8
-    prettier: ^2.8.8
-    solidity-coverage: ^0.8.0
-    ts-node: ">=8.0.0"
-    typechain: ^8.1.0
-    typescript: ">=4.5.0"
-    zetachain: ^7.2.0
-  languageName: unknown
-  linkType: soft
-
 "highlight.js@npm:^10.7.1":
   version: 10.7.3
   resolution: "highlight.js@npm:10.7.3"
@@ -13972,6 +13919,59 @@ __metadata:
   checksum: 010b34e200ca8471f08b8d77a1e3e0d716701c1f56367ea380145e76354c16ad46adedcb9556bc7fcfdcf3f59510a828038b48540f8a52fdfa53d78a564a4988
   languageName: node
   linkType: hard
+
+"zetaconfluence@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "zetaconfluence@workspace:."
+  dependencies:
+    "@chainlink/contracts": ^1.5.0
+    "@coral-xyz/anchor": 0.30.0
+    "@ethersproject/abi": ^5.4.7
+    "@ethersproject/providers": ^5.4.7
+    "@nomicfoundation/hardhat-chai-matchers": ^1.0.0
+    "@nomicfoundation/hardhat-foundry": ^1.1.2
+    "@nomicfoundation/hardhat-network-helpers": ^1.0.0
+    "@nomicfoundation/hardhat-toolbox": ^2.0.0
+    "@nomiclabs/hardhat-ethers": ^2.0.0
+    "@nomiclabs/hardhat-etherscan": ^3.0.0
+    "@openzeppelin/contracts": ^5.4.0
+    "@openzeppelin/contracts-upgradeable": 5.4.0
+    "@pythnetwork/pyth-sdk-solidity": ^4.3.1
+    "@solana-developers/helpers": ^2.4.0
+    "@solana/spl-memo": ^0.2.5
+    "@solana/web3.js": ^1.95.8
+    "@typechain/ethers-v5": ^10.1.0
+    "@typechain/hardhat": ^6.1.2
+    "@types/chai": ^4.2.0
+    "@types/mocha": ">=9.1.0"
+    "@types/node": ">=12.0.0"
+    "@typescript-eslint/eslint-plugin": ^5.59.9
+    "@typescript-eslint/parser": ^5.59.9
+    "@zetachain/protocol-contracts": 14.1.0-rc1
+    "@zetachain/toolkit": ^16.2.2
+    axios: ^1.3.6
+    chai: ^4.2.0
+    dotenv: ^16.0.3
+    envfile: ^6.18.0
+    eslint: ^8.42.0
+    eslint-config-prettier: ^8.8.0
+    eslint-import-resolver-typescript: ^3.5.5
+    eslint-plugin-import: ^2.27.5
+    eslint-plugin-prettier: ^4.2.1
+    eslint-plugin-simple-import-sort: ^10.0.0
+    eslint-plugin-sort-keys-fix: ^1.1.2
+    eslint-plugin-typescript-sort-keys: ^2.3.0
+    ethers: ^5.4.7
+    hardhat: ^2.17.2
+    hardhat-gas-reporter: ^1.0.8
+    prettier: ^2.8.8
+    solidity-coverage: ^0.8.0
+    ts-node: ">=8.0.0"
+    typechain: ^8.1.0
+    typescript: ">=4.5.0"
+    zetachain: ^7.2.0
+  languageName: unknown
+  linkType: soft
 
 "zod-to-json-schema@npm:^3.24.1":
   version: 3.24.6

@@ -1,18 +1,15 @@
 #!/bin/bash
-set -e
+set -exo pipefail
 
 # --- CONFIG ---
 DEPLOY_SCRIPT="scripts/DeployLoanEngine.s.sol:DeployP2PLendingProtocol"
 SETUP_SCRIPT="scripts/DeployLoanEngine.s.sol:SetupP2PLendingProtocol"
 VERIFY_SCRIPT="scripts/DeployLoanEngine.s.sol:VerifyDeployment"
 
-RPC_URL="https://zetachain-athens-evm.blockpi.network/v1/rpc/public"
-CHAIN_ID=7001   # Zetachain Athens Testnet
-
 # Load private key from .env
 if [ -f .env ]; then
   echo "📑 Loading environment variables from .env..."
-  export $(grep -v '^#' .env | xargs)
+  export $(grep -v '^#' .env | sed 's/#.*$//' | xargs)
 fi
 
 REQUIRED_VARS=("PRIVATE_KEY" "SYSTEM_CONTRACT" "ZEVM_GATEWAY_CONTRACT" "UNISWAP_ROUTER" "PYTH_CONTRACT")
@@ -38,9 +35,10 @@ forge script $DEPLOY_SCRIPT \
     --private-key $PRIVATE_KEY \
     --broadcast \
     --chain-id $CHAIN_ID \
-    --via-ir 
+    --via-ir \
+    -vvvv
 
-# Grab deployed address from broadcast file
+
 DEPLOY_JSON="broadcast/DeployLoanEngine.s.sol/$CHAIN_ID/run-latest.json"
 CONTRACT_ADDRESS=$(jq -r '.transactions[-1].contractAddress' $DEPLOY_JSON)
 

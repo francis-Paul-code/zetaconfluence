@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.20;
 
 import {
     IZRC20
@@ -572,7 +572,7 @@ contract P2PLendingProtocol is
 
         // Check if loan fully repaid
         if (loan.totalRepaid >= totalOwed) {
-            Types.Loan storage loan = store.loans[loanId];
+            Types.Loan storage _loan = store.loans[loanId];
             loan.status = Types.LoanStatus.COMPLETED;
 
             store.removeLoanFromActive(loanId);
@@ -675,7 +675,7 @@ contract P2PLendingProtocol is
     }
 
     function onCall(
-        MessageContext calldata context,
+        MessageContext calldata /*context*/,
         address zrc20,
         uint256 amount,
         bytes calldata message
@@ -772,27 +772,27 @@ contract P2PLendingProtocol is
             Types.Bid[] memory acceptedBidsOut
         )
     {
-        Types.User storage user = store.users[user];
+        Types.User storage userData = store.users[user];
 
-        loansOut = new Types.Loan[](user.loans.length);
-        bidsOut = new Types.Bid[](user.bids.length);
-        loanRequestsOut = new Types.LoanRequest[](user.loanRequests.length);
-        acceptedBidsOut = new Types.Bid[](user.acceptedBids.length);
+        loansOut = new Types.Loan[](userData.loans.length);
+        bidsOut = new Types.Bid[](userData.bids.length);
+        loanRequestsOut = new Types.LoanRequest[](userData.loanRequests.length);
+        acceptedBidsOut = new Types.Bid[](userData.acceptedBids.length);
 
-        for (uint256 i = 0; i < user.loans.length; i++) {
-            loansOut[i] = store.loans[user.loans[i]];
+        for (uint256 i = 0; i < userData.loans.length; i++) {
+            loansOut[i] = store.loans[userData.loans[i]];
         }
 
-        for (uint256 i = 0; i < user.bids.length; i++) {
-            bidsOut[i] = store.bids[user.bids[i]];
+        for (uint256 i = 0; i < userData.bids.length; i++) {
+            bidsOut[i] = store.bids[userData.bids[i]];
         }
 
-        for (uint256 i = 0; i < user.loanRequests.length; i++) {
-            loanRequestsOut[i] = store.loanRequests[user.loanRequests[i]];
+        for (uint256 i = 0; i < userData.loanRequests.length; i++) {
+            loanRequestsOut[i] = store.loanRequests[userData.loanRequests[i]];
         }
 
-        for (uint256 i = 0; i < user.acceptedBids.length; i++) {
-            acceptedBidsOut[i] = store.bids[user.acceptedBids[i]];
+        for (uint256 i = 0; i < userData.acceptedBids.length; i++) {
+            acceptedBidsOut[i] = store.bids[userData.acceptedBids[i]];
         }
     }
 
