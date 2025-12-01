@@ -3,7 +3,9 @@ import React, { useState } from 'react';
 import dark from '../../../public/logos/zetaconfluence_logo_clear_dark.svg';
 import light from '../../../public/logos/zetaconfluence_logo_clear_light.svg';
 import { useTheme } from '../../hooks/useTheme';
+import ChatBox from '../ChatBox';
 import { ConnectWallet } from '../ConnectWallet';
+import FAB from '../FAB';
 import { ThemeToggle } from '../ThemeToggle';
 import SideNav from './SideNav';
 
@@ -15,7 +17,7 @@ const Dashboard: React.FC<Props> = ({ children }) => {
   const [sideNavOpen, setSideNavOpen] = useState<boolean>(false);
   const { theme } = useTheme();
   return (
-    <div className="w-full h-[100dvh] flex flex-col overflow-hidden font-poppins bg-background_light dark:bg-background_dark-tint  text-gray-800 dark:text-gray-400">
+    <div className="w-full h-dvh flex flex-col overflow-hidden font-poppins bg-background_light dark:bg-background_dark-tint  text-gray-800 dark:text-gray-400">
       <div className="bg-transparent pt-4 pb-1 px-4 flex items-center w-full h-[8dvh]">
         <div className="h-full w-auto mr-auto flex items-center">
           <img
@@ -42,6 +44,9 @@ const Dashboard: React.FC<Props> = ({ children }) => {
       <div className=" w-full bg-primary px-4 flex items-center bottom-0 h-4">
         here
       </div>
+      
+      <FAB />
+      <ChatBox />
     </div>
   );
 };
