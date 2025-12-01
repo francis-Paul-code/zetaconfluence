@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { NetworkIcon,TokenIcon } from '@web3icons/react/dynamic';
+import { NetworkIcon, TokenIcon } from '@web3icons/react/dynamic';
 import classNames from 'classnames';
 import { motion } from 'motion/react';
 import React, { useMemo, useState } from 'react';
@@ -270,13 +270,14 @@ const RequestLoan = () => {
                     {input.name}
                   </label>
                   {input.inputType === 'select' ? (
-                    <div className="w-auto h-auto ">
+                    <div className="w-auto min-h-[48px] flex ">
                       <CustomSelect
                         name={input.name}
                         value={formData[input.key as keyof typeof formData]}
                         onChange={(val) =>
                           setFormData((prev) => ({ ...prev, [input.key]: val }))
                         }
+                        className={'w-full h-auto flex-1'}
                         options={input.options || []}
                         placeholder={input.placeholder}
                       />
@@ -328,13 +329,14 @@ const RequestLoan = () => {
                     {input.name}
                   </label>
                   {input.inputType === 'select' ? (
-                    <div className="w-auto h-auto ">
+                    <div className="w-auto min-h-[48px] flex ">
                       <CustomSelect
                         name={input.name}
                         value={formData[input.key as keyof typeof formData]}
                         onChange={(val) =>
                           setFormData((prev) => ({ ...prev, [input.key]: val }))
                         }
+                        className={'w-full h-auto flex-1'}
                         options={input.options || []}
                         placeholder={input.placeholder}
                       />
@@ -418,13 +420,14 @@ const RequestLoan = () => {
                     {input.name}
                   </label>
                   {input.inputType === 'select' ? (
-                    <div className="w-auto h-auto ">
+                    <div className="w-auto min-h-[48px] flex ">
                       <CustomSelect
                         name={input.name}
                         value={formData[input.key as keyof typeof formData]}
                         onChange={(val) =>
                           setFormData((prev) => ({ ...prev, [input.key]: val }))
                         }
+                        className={'w-full h-auto flex-1'}
                         options={input.options || []}
                         placeholder={input.placeholder}
                       />

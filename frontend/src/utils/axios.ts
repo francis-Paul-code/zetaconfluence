@@ -8,6 +8,22 @@ export const moralisAxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_MORALIS_BASE_URL,
 });
 
+export const backendAxiosInstance = axios.create({
+  baseURL: import.meta.env.VITE_BACKEND_BASE_URL,
+});
+
+backendAxiosInstance.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      if (!config.params) config.params = {};
+      config.headers['Authorization'] = token;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
 moralisAxiosInstance.interceptors.request.use(
   (config) => {
     const key = import.meta.env.VITE_MORALIS_API_KEY;

@@ -16,6 +16,7 @@ const App = () => {
           {getMainRoutes().map((route) =>
             route.dashboard ? (
               <Route
+                key={route.path}
                 path={route.path}
                 element={
                   <Dashboard>
@@ -25,6 +26,7 @@ const App = () => {
               />
             ) : (
               <Route
+                key={route.path}
                 path={route.path}
                 element={
                   route.isLanding ? (

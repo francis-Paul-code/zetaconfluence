@@ -144,9 +144,7 @@ const LandingPage = () => {
           </div>
 
           <div className="flex items-center gap-4">
-            <button className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-primary transition-colors">
-              Sign In
-            </button>
+           
             <Button
               icon={<FaArrowRight className="w-4 h-4" />}
               onClick={() => navigate('/dashboard/home')}
@@ -190,7 +188,7 @@ const LandingPage = () => {
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <button className="px-8 py-4 bg-primary hover:bg-primary/90 text-white rounded-full font-semibold text-lg transition-all duration-200 flex items-center gap-3 shadow-lg hover:shadow-xl">
+              <button onClick={() => navigate('/dashboard/home')} className="px-8 py-4 bg-primary hover:bg-primary/90 text-white rounded-full font-semibold text-lg transition-all duration-200 flex items-center gap-3 shadow-lg hover:shadow-xl">
                 Start Lending
                 <FaArrowRight className="w-5 h-5" />
               </button>
