@@ -31,6 +31,11 @@ jobs:
         working-directory: ./api
         run: npm run build
 
+      - name: Check AWS secrets are available 
+        run: |
+              if [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then echo "ERROR: AWS_ACCESS_KEY_ID is empty" exit 1 else echo "OK: AWS_ACCESS_KEY_ID is set" fi if [ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then 
+              echo "ERROR: AWS_SECRET_ACCESS_KEY is empty" exit 1 else echo "OK: AWS_SECRET_ACCESS_KEY is set" fi
+
 
       - name: Create .env file from secrets
         working-directory: ./api
