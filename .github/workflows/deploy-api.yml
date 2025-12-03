@@ -56,7 +56,7 @@ jobs:
           application_name: ${{ secrets.EB_APPLICATION_NAME }}
           environment_name: ${{ secrets.EB_ENVIRONMENT_NAME }}
           version_label: "api-${{ steps.timestamp.outputs.time }}-${{ github.sha }}"
-          region: ${{ secrets.AWS_REGION }}
+          region: us-east-1
           deployment_package: deploy.zip
           wait_for_deployment: true
           wait_for_environment_recovery: 300
