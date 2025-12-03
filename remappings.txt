@@ -1,2 +1,4 @@
-@pythnetwork/pyth-sdk-solidity/=node_modules/@pythnetwork/pyth-sdk-solidity
+@pythnetwork/pyth-sdk-solidity/=node_modules/@pythnetwork/pyth-sdk-solidity/
 forge-std-1.9.7/=dependencies/forge-std-1.9.7/
+@openzeppelin=node_modules/@openzeppelin/
+@zetachain/=node_modules/@zetachain/

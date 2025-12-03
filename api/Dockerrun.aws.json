@@ -1,0 +1,14 @@
+{
+  "AWSEBDockerrunVersion": "1",
+  "Image": {
+    "Name": "zetaconfluence-server:latest",
+    "Update": "true"
+  },
+  "Ports": [
+    {
+      "ContainerPort": 8910,
+      "HostPort": 8910
+    }
+  ],
+  "Logging": "/var/log/app"
+}

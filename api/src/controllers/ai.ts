@@ -8,7 +8,14 @@ import { ChatMessage, ChatRequest, OpenAIResponse } from "../types/ai.types";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const OPENAI_API_URL =
   process.env.OPENAI_API_URL || "https://api.openai.com/v1/chat/completions";
-const DEFAULT_MODEL = "gpt-4o-mini"; // Can be changed to gpt-4, deepseek-chat, etc.
+// const DEFAULT_MODEL = "gpt-4o-mini";
+// const DEFAULT_MODEL = "deepseek-chat";
+const DEFAULT_MODEL = "gemini-2.0-flash";
+
+const DEEPSEEK_API_URL = process.env.DEEPSEEK_API_URL || "";
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || "";
+const GEMINI_API_URL = process.env.GEMINI_API_URL || "";
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 
 export const sendMessage = async (
   request: FastifyRequest<{ Body: ChatRequest }>,
@@ -50,16 +57,26 @@ export const sendMessage = async (
     ];
 
     const response = await axios.post<OpenAIResponse>(
-      OPENAI_API_URL,
+      GEMINI_API_URL + "/chat/completions",
       {
+        extra_body: {
+          google: {
+            thinking_config: {
+              include_thoughts: true,
+            },
+          },
+        },
         max_tokens: 1000,
         messages,
         model: DEFAULT_MODEL,
         temperature: 0.7,
+        // thinking: {
+        //   type: "enabled",
+        // },
       },
       {
         headers: {
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          Authorization: `Bearer ${GEMINI_API_KEY}`,
           "Content-Type": "application/json",
         },
       }
@@ -135,7 +152,7 @@ export const streamMessage = async (
     reply.raw.setHeader("Connection", "keep-alive");
 
     const response = await axios.post(
-      OPENAI_API_URL,
+      DEEPSEEK_API_URL,
       {
         max_tokens: 1000,
         messages,
@@ -145,7 +162,7 @@ export const streamMessage = async (
       },
       {
         headers: {
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
           "Content-Type": "application/json",
         },
         responseType: "stream",
