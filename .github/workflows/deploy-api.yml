@@ -34,7 +34,7 @@ jobs:
 
       - name: Build application
         working-directory: ./api
-        run: yarn build
+        run: yarn run build
 
       - name: Create .env file from secrets
         working-directory: ./api
