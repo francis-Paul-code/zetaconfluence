@@ -31,6 +31,8 @@ jobs:
       - name: Install dependencies
         working-directory: ./api
         run: yarn install --immutable
+        env:
+         NODE_ENV: development
 
       - name: Build application
         working-directory: ./api
