@@ -30,7 +30,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: ./api
-        run: yarn install --frozen-lockfile --production=false
+        run: yarn install --immutable
 
       - name: Build application
         working-directory: ./api
