@@ -30,7 +30,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: ./api
-        run: yarn install --frozen-lockfile && yarn add --dev @types/node
+        run: yarn install --frozen-lockfile --production=false
 
       - name: Build application
         working-directory: ./api
