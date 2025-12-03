@@ -420,9 +420,9 @@ We welcome contributions from the community! Whether it's bug reports, feature r
 
 <div align="center">
 
-[![Contributors](https://img.shields.io/github/contributors/yourusername/zetaconfluence?style=for-the-badge)](https://github.com/yourusername/zetaconfluence/graphs/contributors)
-[![Issues](https://img.shields.io/github/issues/yourusername/zetaconfluence?style=for-the-badge)](https://github.com/yourusername/zetaconfluence/issues)
-[![Pull Requests](https://img.shields.io/github/issues-pr/yourusername/zetaconfluence?style=for-the-badge)](https://github.com/yourusername/zetaconfluence/pulls)
+[![Contributors](https://img.shields.io/github/contributors/francis-Paul-code/zetaconfluence?style=for-the-badge)](https://github.com/francis-Paul-code/zetaconfluence/graphs/contributors)
+[![Issues](https://img.shields.io/github/issues/francis-Paul-code/zetaconfluence?style=for-the-badge)](https://github.com/francis-Paul-code/zetaconfluence/issues)
+[![Pull Requests](https://img.shields.io/github/issues-pr/francis-Paul-code/zetaconfluence?style=for-the-badge)](https://github.com/francis-Paul-code/zetaconfluence/pulls)
 
 </div>
 
@@ -439,7 +439,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 [![Documentation](https://img.shields.io/badge/📚_Documentation-Coming_Soon-7C3AED?style=for-the-badge)](https://docs.zetaconfluence.io)
 [![Discord](https://img.shields.io/badge/💬_Discord-Join_Us-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/zetaconfluence)
 [![Twitter](https://img.shields.io/badge/🐦_Twitter-Follow-1DA1F2?style=for-the-badge&logo=twitter&logoColor=white)](https://twitter.com/zetaconfluence)
-[![Website](https://img.shields.io/badge/🌐_Website-Visit-7C3AED?style=for-the-badge)](https://zetaconfluence.io)
+[![Website](https://img.shields.io/badge/🌐_Website-Visit-7C3AED?style=for-the-badge)](https://zetaconfluence.speedballmag.com)
 
 </div>
 
@@ -470,9 +470,9 @@ Never invest more than you can afford to lose.
 
 ---
 
-Made with 💜 by the ZetaConfluence Team
+Made with 💜 by [Francis Musango](https://github.com/francis-Paul-code)
 
-[![Star on GitHub](https://img.shields.io/github/stars/yourusername/zetaconfluence?style=social)](https://github.com/yourusername/zetaconfluence)
+[![Star on GitHub](https://img.shields.io/github/stars/francis-Paul-code/zetaconfluence?style=social)](https://github.com/francis-Paul-code/zetaconfluence)
 [![Follow on Twitter](https://img.shields.io/twitter/follow/zetaconfluence?style=social)](https://twitter.com/zetaconfluence)
 
 </div>
