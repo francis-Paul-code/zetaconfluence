@@ -20,16 +20,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'yarn'
-          cache-dependency-path: api/yarn.lock
+          cache: 'npm'
+          cache-dependency-path: api/package-lock.json
 
       - name: Install dependencies
         working-directory: ./api
-        run: yarn install --frozen-lockfile
+        run: npm ci
 
       - name: Build application
         working-directory: ./api
-        run: yarn build
+        run: npm run build
 
       - name: Create .env file from secrets
         working-directory: ./api
