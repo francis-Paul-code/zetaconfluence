@@ -22,7 +22,7 @@ const Dashboard: React.FC<Props> = ({ children }) => {
         <div className="h-full w-auto mr-auto flex items-center">
           <img
             src={theme === 'dark' ? dark : light}
-            className="h-full object-cover w-auto"
+            className="h-full object-cover w-auto aspect-auto"
             alt="logo"
           />
         </div>
