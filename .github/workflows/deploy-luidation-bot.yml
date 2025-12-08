@@ -9,7 +9,7 @@ on:
       - '.github/workflows/deploy-liquidation-bot.yml'
 
 jobs:
-  deploy:
+  deploy-bot:
     runs-on: ubuntu-latest
     environment: testing
     
