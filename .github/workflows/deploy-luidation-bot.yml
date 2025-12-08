@@ -1,0 +1,70 @@
+name: Deploy LIQUIDATION BOT to AWS Elastic Beanstalk
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'liquidation-bot/**'
+      - '.github/workflows/deploy-liquidation-bot.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: testing
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: liquidation-bot/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./liquidation-bot
+        run: npm ci --legacy-peer-deps
+
+      - name: Build application
+        working-directory: ./liquidation-bot
+        run: npm run build
+
+      - name: Create .env file from secrets
+        working-directory: ./liquidation-bot
+        run: |
+          cat << EOF > .env
+          ${{ secrets.liquidation-bot_ENV_VARS }}
+          EOF
+
+      - name: Generate deployment package
+        run: |
+          cd liquidation-bot
+          zip -r ../deploy.zip . -x "*.git*" "node_modules/*" "*.env.example*"
+
+      - name: Get timestamp
+        id: timestamp
+        run: echo "time=$(date +%Y%m%d_%H%M%S)" >> $GITHUB_OUTPUT
+
+      - name: Deploy to Elastic Beanstalk
+        uses: einaregilsson/beanstalk-deploy@v22
+        with:
+          aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          application_name: ${{ secrets.EB_APPLICATION_NAME }}
+          environment_name: ${{ secrets.EB_LIQUIDATION_ENVIRONMENT_NAME }}
+          version_label: "liquidation-bot-${{ steps.timestamp.outputs.time }}-${{ github.sha }}"
+          region: us-east-1
+          deployment_package: deploy.zip
+          wait_for_deployment: true
+          wait_for_environment_recovery: 300
+
+      - name: Deployment successful
+        if: success()
+        run: echo "✅ Liquidation Bot deployed successfully to Elastic Beanstalk"
+
+      - name: Deployment failed
+        if: failure()
+        run: echo "❌ Liquidation Bot deployment failed"
