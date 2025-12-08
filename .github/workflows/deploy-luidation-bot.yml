@@ -1,15 +1,15 @@
-name: Deploy API to AWS Elastic Beanstalk
+name: Deploy LIQUIDATION BOT to AWS Elastic Beanstalk
 
 on:
   push:
     branches:
       - main
     paths:
-      - 'api/**'
-      - '.github/workflows/deploy-api.yml'
+      - 'liquidation-bot/**'
+      - '.github/workflows/deploy-liquidation-bot.yml'
 
 jobs:
-  deploy-api:
+  deploy-bot:
     runs-on: ubuntu-latest
     environment: testing
     
@@ -22,26 +22,26 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: api/package-lock.json
+          cache-dependency-path: liquidation-bot/package-lock.json
 
       - name: Install dependencies
-        working-directory: ./api
+        working-directory: ./liquidation-bot
         run: npm ci --legacy-peer-deps
 
       - name: Build application
-        working-directory: ./api
+        working-directory: ./liquidation-bot
         run: npm run build
 
       - name: Create .env file from secrets
-        working-directory: ./api
+        working-directory: ./liquidation-bot
         run: |
           cat << EOF > .env
-          ${{ secrets.API_ENV_VARS }}
+          ${{ secrets.liquidation-bot_ENV_VARS }}
           EOF
 
       - name: Generate deployment package
         run: |
-          cd api
+          cd liquidation-bot
           zip -r ../deploy.zip . -x "*.git*" "node_modules/*" "*.env.example*"
 
       - name: Get timestamp
@@ -54,8 +54,8 @@ jobs:
           aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           application_name: ${{ secrets.EB_APPLICATION_NAME }}
-          environment_name: ${{ secrets.EB_ENVIRONMENT_NAME }}
-          version_label: "api-${{ steps.timestamp.outputs.time }}-${{ github.sha }}"
+          environment_name: ${{ secrets.EB_LIQUIDATION_ENVIRONMENT_NAME }}
+          version_label: "liquidation-bot-${{ steps.timestamp.outputs.time }}-${{ github.sha }}"
           region: us-east-1
           deployment_package: deploy.zip
           wait_for_deployment: true
@@ -63,8 +63,8 @@ jobs:
 
       - name: Deployment successful
         if: success()
-        run: echo "✅ API deployed successfully to Elastic Beanstalk"
+        run: echo "✅ Liquidation Bot deployed successfully to Elastic Beanstalk"
 
       - name: Deployment failed
         if: failure()
-        run: echo "❌ API deployment failed"
+        run: echo "❌ Liquidation Bot deployment failed"
