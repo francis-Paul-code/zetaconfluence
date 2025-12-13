@@ -140,13 +140,255 @@ export default {
     }
   },
 
-  createLoanBid: async (
-    req: MetaBid,
+  placeLoanBid: async (
+    bids: MetaBid[], // change contract to allow 1 bid at a time
     wallet: Wallet,
     evmProvider?: EIP6963ProviderDetail,
     bitcoinProvider?: any,
     solanaProvider?: any
-  ) => {},
+  ) => {
+    try {
+      const encodedBids = abiCoder.encode(
+        ['tuple(uint256 loanRequestId, address lender, uint256 amount, uint256 interestRate, address fundingAsset)[]'],
+        [bids.map(bid => [
+          bid.loanRequestId,
+          bid.lender,
+          bid.amount,
+          bid.interestRate,
+          bid.fundingAsset
+        ])]
+      );
+
+      const payload = [
+        ['string', 'address', 'bytes'],
+        ['PLACE_LOAN_REQUEST_BID', wallet.account!, encodedBids],
+      ];
+
+      if (evmProvider) {
+        const signer = await getSignerAndProvider({
+          selectedProvider: evmProvider,
+          primaryWallet: wallet,
+        })!;
+
+        // Assuming first bid's funding asset and amount for the deposit
+        const firstBid = bids[0];
+        gateway.evm.depositAndCall(
+          {
+            receiver: process.env.VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
+            revertOptions: {
+              revertAddress: await signer?.signer.getAddress(),
+              callOnRevert: true,
+              revertMessage: 'PLACE_LOAN_REQUEST_BID',
+              abortAddress: process.env.VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
+            },
+            types: payload[0],
+            values: payload[1],
+            token: firstBid.fundingAsset as HexAddr,
+            amount: firstBid.amount.toString(),
+          },
+          signer?.signer!
+        );
+      } else throw new Error('No provider provided');
+    } catch (err) {
+      console.log(
+        `[ERROR] - [PROTOCOL] - [PLACE LOAN BID] - MESSAGE = ${err}`
+      );
+      if (err instanceof Error) throw err;
+      throw new Error(err as string);
+    }
+  },
+
+  recoverBidFunding: async (
+    bidId: number,
+    wallet: Wallet,
+    evmProvider?: EIP6963ProviderDetail,
+    bitcoinProvider?: any,
+    solanaProvider?: any
+  ) => {
+    try {
+      const encodedData = abiCoder.encode(['uint256'], [bidId]);
+
+      const payload = [
+        ['string', 'address', 'bytes'],
+        ['RECOVER_BID_FUNDING', wallet.account!, encodedData],
+      ];
+
+      if (evmProvider) {
+        const signer = await getSignerAndProvider({
+          selectedProvider: evmProvider,
+          primaryWallet: wallet,
+        })!;
+
+        gateway.evm.gatewayCall(
+          {
+            receiver: process.env.VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
+            revertOptions: {
+              revertAddress: await signer?.signer.getAddress(),
+              callOnRevert: true,
+              revertMessage: 'RECOVER_BID_FUNDING',
+              abortAddress: process.env.VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
+            },
+            types: payload[0],
+            values: payload[1],
+          },
+          signer?.signer!
+        );
+      } else throw new Error('No provider provided');
+    } catch (err) {
+      console.log(
+        `[ERROR] - [PROTOCOL] - [RECOVER BID FUNDING] - [BID ID = ${bidId}] MESSAGE = ${err}`
+      );
+      if (err instanceof Error) throw err;
+      throw new Error(err as string);
+    }
+  },
+
+  executeLoan: async (
+    loanRequestId: number,
+    acceptedBids: number[],
+    wallet: Wallet,
+    evmProvider?: EIP6963ProviderDetail,
+    bitcoinProvider?: any,
+    solanaProvider?: any
+  ) => {
+    try {
+      const encodedData = abiCoder.encode(
+        ['uint256', 'uint256[]'],
+        [loanRequestId, acceptedBids]
+      );
+
+      const payload = [
+        ['string', 'address', 'bytes'],
+        ['EXECUTE_LOAN', wallet.account!, encodedData],
+      ];
+
+      if (evmProvider) {
+        const signer = await getSignerAndProvider({
+          selectedProvider: evmProvider,
+          primaryWallet: wallet,
+        })!;
+
+        gateway.evm.gatewayCall(
+          {
+            receiver: process.env.VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
+            revertOptions: {
+              revertAddress: await signer?.signer.getAddress(),
+              callOnRevert: true,
+              revertMessage: 'EXECUTE_LOAN',
+              abortAddress: process.env.VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
+            },
+            types: payload[0],
+            values: payload[1],
+          },
+          signer?.signer!
+        );
+      } else throw new Error('No provider provided');
+    } catch (err) {
+      console.log(
+        `[ERROR] - [PROTOCOL] - [EXECUTE LOAN] - [LOAN REQUEST ID = ${loanRequestId}] MESSAGE = ${err}`
+      );
+      if (err instanceof Error) throw err;
+      throw new Error(err as string);
+    }
+  },
+
+  repayLoan: async (
+    loanId: number,
+    repaymentAmount: bigint,
+    repaymentAsset: string,
+    wallet: Wallet,
+    evmProvider?: EIP6963ProviderDetail,
+    bitcoinProvider?: any,
+    solanaProvider?: any
+  ) => {
+    try {
+      const encodedData = abiCoder.encode(['uint256'], [loanId]);
+
+      const payload = [
+        ['string', 'address', 'bytes'],
+        ['REPAY_LOAN', wallet.account!, encodedData],
+      ];
+
+      if (evmProvider) {
+        const signer = await getSignerAndProvider({
+          selectedProvider: evmProvider,
+          primaryWallet: wallet,
+        })!;
+
+        gateway.evm.depositAndCall(
+          {
+            receiver: process.env.VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
+            revertOptions: {
+              revertAddress: await signer?.signer.getAddress(),
+              callOnRevert: true,
+              revertMessage: 'REPAY_LOAN',
+              abortAddress: process.env.VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
+            },
+            types: payload[0],
+            values: payload[1],
+            token: repaymentAsset as HexAddr,
+            amount: repaymentAmount.toString(),
+          },
+          signer?.signer!
+        );
+      } else throw new Error('No provider provided');
+    } catch (err) {
+      console.log(
+        `[ERROR] - [PROTOCOL] - [REPAY LOAN] - [LOAN ID = ${loanId}] MESSAGE = ${err}`
+      );
+      if (err instanceof Error) throw err;
+      throw new Error(err as string);
+    }
+  },
+
+  recoverLoanCollateral: async (
+    loanRequestId: number,
+    toAddress: string,
+    wallet: Wallet,
+    evmProvider?: EIP6963ProviderDetail,
+    bitcoinProvider?: any,
+    solanaProvider?: any
+  ) => {
+    try {
+      const encodedData = abiCoder.encode(
+        ['uint256', 'bytes'],
+        [loanRequestId, toAddress]
+      );
+
+      const payload = [
+        ['string', 'address', 'bytes'],
+        ['RECOVER_LOAN_COLLATERAL', wallet.account!, encodedData],
+      ];
+
+      if (evmProvider) {
+        const signer = await getSignerAndProvider({
+          selectedProvider: evmProvider,
+          primaryWallet: wallet,
+        })!;
+
+        gateway.evm.gatewayCall(
+          {
+            receiver: process.env.VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
+            revertOptions: {
+              revertAddress: await signer?.signer.getAddress(),
+              callOnRevert: true,
+              revertMessage: 'RECOVER_LOAN_COLLATERAL',
+              abortAddress: process.env.VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
+            },
+            types: payload[0],
+            values: payload[1]
+          },
+          signer?.signer!
+        );
+      } else throw new Error('No provider provided');
+    } catch (err) {
+      console.log(
+        `[ERROR] - [PROTOCOL] - [RECOVER LOAN COLLATERAL] - [LOAN REQUEST ID = ${loanRequestId}] MESSAGE = ${err}`
+      );
+      if (err instanceof Error) throw err;
+      throw new Error(err as string);
+    }
+  },
 
   getSupportedAssets: async (
     wallet: Wallet,
@@ -167,9 +409,124 @@ export default {
       // Add to queue and check length
       addToQueue(userCallsQueue, 'supported_assets', req);
 
-      return
+      return;
     } catch (error) {
       console.error('Supported Assets call failed', error);
+      return null;
+    }
+  },
+
+  getUserData: async (
+    userAddress: string,
+    wallet: Wallet,
+    evmProvider?: EIP6963ProviderDetail,
+    bitcoinProvider?: any,
+    solanaProvider?: any
+  ) => {
+    try {
+      const req: RequestQueueItem = {
+        bitcoinProvider,
+        evmProvider,
+        solanaProvider,
+        wallet,
+        data: userAddress,
+        functionName: 'getUserData' as ContractFunctionNames,
+      };
+
+      addToQueue(userCallsQueue, `user_data_${userAddress}`, req);
+
+      return;
+    } catch (error) {
+      console.error('Get User Data call failed', error);
+      return null;
+    }
+  },
+
+  getLoan: async (
+    loanId: number,
+    wallet: Wallet,
+    evmProvider?: EIP6963ProviderDetail,
+    bitcoinProvider?: any,
+    solanaProvider?: any
+  ) => {
+    try {
+      const req: RequestQueueItem = {
+        bitcoinProvider,
+        evmProvider,
+        solanaProvider,
+        wallet,
+        data: loanId.toString(),
+        functionName: 'getLoan' as ContractFunctionNames,
+      };
+
+      addToQueue(userCallsQueue, `loan_${loanId}`, req);
+
+      return;
+    } catch (error) {
+      console.error('Get Loan call failed', error);
+      return null;
+    }
+  },
+
+  // Direct contract read calls (not queued)
+  getSupportedAssetsSync: async () => {
+    try {
+      const publicClient = createPublicClient({
+        chain: zetachain,
+        transport: http(import.meta.env.VITE_ZETA_RPC_URL),
+      });
+
+      const result = await publicClient.readContract({
+        address: import.meta.env.VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
+        abi: P2PLendingProtocolABI,
+        functionName: 'getSupportedAssets',
+      });
+
+      return result;
+    } catch (error) {
+      console.error('Get Supported Assets Sync call failed', error);
+      return null;
+    }
+  },
+
+  getUserDataSync: async (userAddress: string) => {
+    try {
+      const publicClient = createPublicClient({
+        chain: zetachain,
+        transport: http(import.meta.env.VITE_ZETA_RPC_URL),
+      });
+
+      const result = await publicClient.readContract({
+        address: import.meta.env.VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
+        abi: P2PLendingProtocolABI,
+        functionName: 'getUserData',
+        args: [userAddress],
+      });
+
+      return result;
+    } catch (error) {
+      console.error('Get User Data Sync call failed', error);
+      return null;
+    }
+  },
+
+  getLoanSync: async (loanId: number) => {
+    try {
+      const publicClient = createPublicClient({
+        chain: zetachain,
+        transport: http(import.meta.env.VITE_ZETA_RPC_URL),
+      });
+
+      const result = await publicClient.readContract({
+        address: import.meta.env.VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
+        abi: P2PLendingProtocolABI,
+        functionName: 'getLoan',
+        args: [loanId],
+      });
+
+      return result;
+    } catch (error) {
+      console.error('Get Loan Sync call failed', error);
       return null;
     }
   },

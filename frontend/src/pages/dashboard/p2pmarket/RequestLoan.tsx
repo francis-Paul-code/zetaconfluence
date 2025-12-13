@@ -289,7 +289,7 @@ const RequestLoan = () => {
                       value={formData[input.key as keyof typeof formData]}
                       onChange={handleInputChange}
                       placeholder={input.placeholder}
-                      className="w-full p-3 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary/40 focus:border-transparent focus:outline-none"
+                      className="w-full p-3 rounded-lg bg-background_light dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary/40 focus:border-transparent focus:outline-none"
                       required
                     />
                   ) : input.inputType === 'hybrid' ? (
@@ -348,7 +348,7 @@ const RequestLoan = () => {
                       value={formData[input.key as keyof typeof formData]}
                       onChange={handleInputChange}
                       placeholder={input.placeholder}
-                      className="w-full p-3 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary/40 focus:border-transparent focus:outline-none"
+                      className="w-full p-3 rounded-lg bg-background_light dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary/40 focus:border-transparent focus:outline-none"
                       required
                     />
                   ) : input.inputType === 'hybrid' ? (
@@ -439,7 +439,7 @@ const RequestLoan = () => {
                       value={formData[input.key as keyof typeof formData]}
                       onChange={handleInputChange}
                       placeholder={input.placeholder}
-                      className="w-full p-3 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary/40 focus:border-transparent focus:outline-none"
+                      className="w-full p-3 rounded-lg bg-background_light dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary/40 focus:border-transparent focus:outline-none"
                       required
                     />
                   ) : input.inputType === 'hybrid' ? (

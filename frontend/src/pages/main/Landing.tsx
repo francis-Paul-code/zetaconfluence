@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useState } from 'react';
 import {
   FaArrowRight,
@@ -10,9 +11,13 @@ import {
 } from 'react-icons/fa';
 import { useNavigate } from 'react-router';
 
-import logo_dark from '../../../public/logos/zetaconfluence_logo_clear_dark.svg';
+import dark from '../../../public/logos/zetaconfluence_logo_clear_dark.svg';
+import light from '../../../public/logos/zetaconfluence_logo_clear_light.svg';
 import { Button } from '../../components/Button';
+import { useTheme } from '../../hooks/useTheme';
+
 const LandingPage = () => {
+  const { theme } = useTheme();
   const [isVisible, setIsVisible] = useState<any>({});
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
   const navigate = useNavigate();
@@ -90,7 +95,7 @@ const LandingPage = () => {
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            setIsVisible((prev:any) => ({ ...prev, [entry.target.id]: true }));
+            setIsVisible((prev: any) => ({ ...prev, [entry.target.id]: true }));
           }
         });
       },
@@ -109,9 +114,9 @@ const LandingPage = () => {
           <div className="flex items-center gap-3">
             <span className="w-auto h-[40px]">
               <img
-                src={logo_dark}
+                src={theme === 'dark' ? dark : light}
+                className="h-full object-cover w-auto aspect-auto"
                 alt="logo"
-                className="h-full w-auto object-cover"
               />
             </span>
           </div>
@@ -144,12 +149,10 @@ const LandingPage = () => {
           </div>
 
           <div className="flex items-center gap-4">
-           
             <Button
               icon={<FaArrowRight className="w-4 h-4" />}
               onClick={() => navigate('/dashboard/home')}
               className="bg-primary hover:bg-primary/90 text-white transition-all duration-200"
-
             >
               Launch App
             </Button>
@@ -188,7 +191,10 @@ const LandingPage = () => {
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <button onClick={() => navigate('/dashboard/home')} className="px-8 py-4 bg-primary hover:bg-primary/90 text-white rounded-full font-semibold text-lg transition-all duration-200 flex items-center gap-3 shadow-lg hover:shadow-xl">
+              <button
+                onClick={() => navigate('/dashboard/home')}
+                className="px-8 py-4 bg-primary hover:bg-primary/90 text-white rounded-full font-semibold text-lg transition-all duration-200 flex items-center gap-3 shadow-lg hover:shadow-xl"
+              >
                 Start Lending
                 <FaArrowRight className="w-5 h-5" />
               </button>
@@ -418,20 +424,20 @@ const LandingPage = () => {
       </section>
 
       {/* Footer */}
-      <footer className="py-16 px-6 bg-gray-900 dark:bg-black text-white">
+      <footer className="py-16 px-6 bg-white dark:bg-black text-gray-700 dark:text-gray-300">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
             <div>
               <div className="flex items-center gap-3 mb-6">
                 <span className="w-auto h-[30px]">
                   <img
-                    src={logo_dark}
+                    src={theme === 'dark' ? dark : light}
+                    className="h-full object-cover w-auto aspect-auto"
                     alt="logo"
-                    className="h-full w-auto object-cover"
                   />
                 </span>
               </div>
-              <p className="text-gray-400 leading-relaxed">
+              <p className="text-gray-500 dark:text-gray-400 leading-relaxed">
                 The future of omnichain P2P lending. Secure, efficient, and
                 truly decentralized.
               </p>
@@ -442,25 +448,25 @@ const LandingPage = () => {
               <div className="space-y-3">
                 <a
                   href="#"
-                  className="block text-gray-400 hover:text-white transition-colors"
+                  className="block text-gray-500 dark:text-gray-400 hover:dark:text-white hover:text-gray-800 transition-colors"
                 >
                   Lend
                 </a>
                 <a
                   href="#"
-                  className="block text-gray-400 hover:text-white transition-colors"
+                  className="block text-gray-500 dark:text-gray-400 hover:dark:text-white hover:text-gray-800 transition-colors"
                 >
                   Borrow
                 </a>
                 <a
                   href="#"
-                  className="block text-gray-400 hover:text-white transition-colors"
+                  className="block text-gray-500 dark:text-gray-400 hover:dark:text-white hover:text-gray-800 transition-colors"
                 >
                   Markets
                 </a>
                 <a
                   href="#"
-                  className="block text-gray-400 hover:text-white transition-colors"
+                  className="block text-gray-500 dark:text-gray-400 hover:dark:text-white hover:text-gray-800 transition-colors"
                 >
                   Analytics
                 </a>
@@ -472,25 +478,25 @@ const LandingPage = () => {
               <div className="space-y-3">
                 <a
                   href="#"
-                  className="block text-gray-400 hover:text-white transition-colors"
+                  className="block text-gray-500 dark:text-gray-400 hover:dark:text-white hover:text-gray-800 transition-colors"
                 >
                   Documentation
                 </a>
                 <a
                   href="#"
-                  className="block text-gray-400 hover:text-white transition-colors"
+                  className="block text-gray-500 dark:text-gray-400 hover:dark:text-white hover:text-gray-800 transition-colors"
                 >
                   Whitepaper
                 </a>
                 <a
                   href="#"
-                  className="block text-gray-400 hover:text-white transition-colors"
+                  className="block text-gray-500 dark:text-gray-400 hover:dark:text-white hover:text-gray-800 transition-colors"
                 >
                   Blog
                 </a>
                 <a
                   href="#"
-                  className="block text-gray-400 hover:text-white transition-colors"
+                  className="block text-gray-500 dark:text-gray-400 hover:dark:text-white hover:text-gray-800 transition-colors"
                 >
                   Support
                 </a>
@@ -502,25 +508,25 @@ const LandingPage = () => {
               <div className="space-y-3">
                 <a
                   href="#"
-                  className="block text-gray-400 hover:text-white transition-colors"
+                  className="block text-gray-500 dark:text-gray-400 hover:dark:text-white hover:text-gray-800 transition-colors"
                 >
                   Discord
                 </a>
                 <a
                   href="#"
-                  className="block text-gray-400 hover:text-white transition-colors"
+                  className="block text-gray-500 dark:text-gray-400 hover:dark:text-white hover:text-gray-800 transition-colors"
                 >
                   Twitter
                 </a>
                 <a
                   href="#"
-                  className="block text-gray-400 hover:text-white transition-colors"
+                  className="block text-gray-500 dark:text-gray-400 hover:dark:text-white hover:text-gray-800 transition-colors"
                 >
                   Telegram
                 </a>
                 <a
                   href="#"
-                  className="block text-gray-400 hover:text-white transition-colors"
+                  className="block text-gray-500 dark:text-gray-400 hover:dark:text-white hover:text-gray-800 transition-colors"
                 >
                   GitHub
                 </a>
@@ -529,25 +535,25 @@ const LandingPage = () => {
           </div>
 
           <div className="border-t border-gray-800 pt-8 flex flex-col md:flex-row items-center justify-between">
-            <p className="text-gray-400 text-sm">
+            <p className="text-gray-500 dark:text-gray-400 text-sm">
               © 2025 ZetaConfluence. All rights reserved.
             </p>
             <div className="flex items-center gap-6 mt-4 md:mt-0">
               <a
                 href="#"
-                className="text-gray-400 hover:text-white text-sm transition-colors"
+                  className="block text-gray-500 dark:text-gray-400 hover:dark:text-white hover:text-gray-800 transition-colors"
               >
                 Privacy Policy
               </a>
               <a
                 href="#"
-                className="text-gray-400 hover:text-white text-sm transition-colors"
+                  className="block text-gray-500 dark:text-gray-400 hover:dark:text-white hover:text-gray-800 transition-colors"
               >
                 Terms of Service
               </a>
               <a
                 href="#"
-                className="text-gray-400 hover:text-white text-sm transition-colors"
+                  className="block text-gray-500 dark:text-gray-400 hover:dark:text-white hover:text-gray-800 transition-colors"
               >
                 Security
               </a>

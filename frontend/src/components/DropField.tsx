@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, {
   type FC,
@@ -77,7 +78,7 @@ const DropField: FC<IDropField> = ({
           placeholder={placeholder}
           maxLength={maxLength}
           onFocus={() => setIsOpen(true)}
-          className="w-full p-3 pr-10 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary/40 focus:border-transparent focus:outline-none"
+          className="w-full p-3 pr-10 rounded-lg bg-background_light dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary/40 focus:border-transparent focus:outline-none"
           required
         />
         <button

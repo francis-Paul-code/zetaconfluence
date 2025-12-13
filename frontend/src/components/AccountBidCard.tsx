@@ -1,11 +1,12 @@
 /* eslint-disable no-unsafe-optional-chaining */
 /* eslint-disable @typescript-eslint/no-non-null-asserted-optional-chain */
 import { NetworkIcon, TokenIcon } from '@web3icons/react/dynamic';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { FaCheckCircle, FaClock, FaEye } from 'react-icons/fa';
 
 import { type Bid, BidStatus, type LoanRequest } from '../constants/loans';
 import { useWallet } from '../hooks/useWallet';
+import FundingBidModal from './FundingBidModal';
 
 const AccountBidCard = ({
   bid,
@@ -33,6 +34,8 @@ const AccountBidCard = ({
     return decimals({ collateral, principal });
   }, [collateral, principal, decimals]);
 
+  const [showBidModal, setShowBidModal] = useState(false);
+
   const getStatusColor = (status: BidStatus) => {
     switch (status) {
       case BidStatus.PENDING:
@@ -50,7 +53,9 @@ const AccountBidCard = ({
     }
   };
 
-  const handleViewDetails = () => {};
+  const handleViewDetails = () => {
+    setShowBidModal(true);
+  };
 
   return (
     <div className="bg-white dark:bg-background_dark-tint rounded-xl p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow">
@@ -270,6 +275,15 @@ const AccountBidCard = ({
           View Details
         </button>
       </div>
+
+      {/* Funding Bid Details Modal */}
+      {showBidModal && (
+        <FundingBidModal
+          bid={bid}
+          open={showBidModal}
+          onClose={() => setShowBidModal(false)}
+        />
+      )}
     </div>
   );
 };

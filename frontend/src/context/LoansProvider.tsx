@@ -6,8 +6,15 @@ import { LoansContext, type LoansContextType } from './LoansContext';
 
 export const LoansProvider = ({ children }: { children: ReactNode }) => {
   const { error, loading, loanBids, loanRequests } = useLoansState();
-  const { createLoanBid, createLoanRequest, getSupportedAssets } =
-    useLoans().protocol;
+  const {
+    createLoanRequest,
+    getSupportedAssets,
+    executeLoan,
+    getLoan,
+    getUserData,
+    placeLoanBid,
+    recoverBidFunding,
+  } = useLoans().protocol;
 
   useEffect(() => {
     const res = (async () => {
@@ -23,16 +30,16 @@ export const LoansProvider = ({ children }: { children: ReactNode }) => {
         loading,
         loanBids,
         loanRequests,
-        createLoanBid,
+        createLoanBid: placeLoanBid,
         createLoanRequest,
         getSupportedAssets,
-      } as LoansContextType),
+      } as unknown as LoansContextType),
     [
       error,
       loading,
       loanBids,
       loanRequests,
-      createLoanBid,
+      placeLoanBid,
       createLoanRequest,
       getSupportedAssets,
     ]

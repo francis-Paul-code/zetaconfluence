@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { ISupportedAsset, SupportedChain } from '../constants/chains';
+import type { ISupportedAsset } from '../constants/chains';
 import { moralisAxiosInstance } from '../utils/axios';
 
 export const fetchWalletBalance = async ({

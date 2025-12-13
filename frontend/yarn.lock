@@ -6569,23 +6569,23 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@web3icons/common@npm:0.11.32":
-  version: 0.11.32
-  resolution: "@web3icons/common@npm:0.11.32"
+"@web3icons/common@npm:0.11.35":
+  version: 0.11.35
+  resolution: "@web3icons/common@npm:0.11.35"
   peerDependencies:
     typescript: ^5.0.0
-  checksum: 73a9fabfcc3708b98701e04089b020948d512265d9e8fbf389a8ae015a78c427b41f281bfc85e8f25b2b29942a7c0a32dd1dd344ef5cf1f6dce6206a637db149
+  checksum: 8e1897c78a0cd6d9c26aa6a48a7837076b001f9c3ac3d791af9b9f4e8916bbe5e25d795d83cc713130be142eb1d94d7b48a6409832a7d938e53e146b8aedad0d
   languageName: node
   linkType: hard
 
-"@web3icons/react@npm:^4.1.2":
-  version: 4.1.2
-  resolution: "@web3icons/react@npm:4.1.2"
+"@web3icons/react@npm:4.1.6":
+  version: 4.1.6
+  resolution: "@web3icons/react@npm:4.1.6"
   dependencies:
-    "@web3icons/common": 0.11.32
+    "@web3icons/common": 0.11.35
   peerDependencies:
     react: ^18.0.0 || ^19.0.0
-  checksum: b7af5b999eec28eaa15072a2f91c3f56cdfb858e0b7b6ffd0a23844c10daf6f39f99b496a11e99ca3efd8183bb54cf5dd073fd6efe53a5a1137ef348a8f33e12
+  checksum: 5bf057bcd10f214d358453233fcb82a212893527ce8b508f0d66b460f0a05f6c594b764422d0c36316da8f19fb0f00a719546814d1fd51d71e1411f23d3b775f
   languageName: node
   linkType: hard
 
@@ -9658,7 +9658,7 @@ __metadata:
     "@types/react-dom": ^19.1.6
     "@types/react-router": ^5.1.20
     "@vitejs/plugin-react": ^4.6.0
-    "@web3icons/react": ^4.1.2
+    "@web3icons/react": 4.1.6
     "@zetachain/toolkit": 16.2.0
     "@zetachain/wallet": 1.0.13
     abitype: ^1.2.0

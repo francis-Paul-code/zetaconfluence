@@ -12,7 +12,7 @@
   "dependencies": {
     "@tailwindcss/vite": "^4.1.17",
     "@types/react-router": "^5.1.20",
-    "@web3icons/react": "^4.1.2",
+    "@web3icons/react": "4.1.6",
     "@zetachain/toolkit": "16.2.0",
     "@zetachain/wallet": "1.0.13",
     "abitype": "^1.2.0",

@@ -7,10 +7,11 @@ import { FaClock, FaExclamationTriangle, FaEye } from 'react-icons/fa';
 import { type Loan, LoanStatus } from '../constants/loans';
 import { useWallet } from '../hooks/useWallet';
 import { Button } from './Button';
+import LoanModal from './LoanModal';
 
 const AccountLoanCard = ({ loan }: { loan: Loan }) => {
   const [openLoanDetails, setOpenLoanDetails] = useState<boolean>(false);
-  const { supportedAssets } = useWallet();
+  const { supportedAssets, decimals } = useWallet();
   const { principal, collateral } = useMemo(() => {
     const p = Object.values(supportedAssets).find(
       (i) => i.address === loan?.principalAsset
@@ -25,79 +26,10 @@ const AccountLoanCard = ({ loan }: { loan: Loan }) => {
     };
   }, [loan?.collateralAsset, loan?.principalAsset, supportedAssets]);
 
-  const decimals = useMemo(() => {
-    let _collateral: number;
-    let _principal: number;
-    switch (collateral?.network) {
-      case 'ETHEREUM':
-        if (
-          collateral.native ||
-          collateral.symbol === 'DAI' ||
-          collateral.symbol === 'LINK' ||
-          collateral.symbol === 'WETH' ||
-          collateral.symbol === 'BNB'
-        ) {
-          _collateral = 10 ** 18;
-          break;
-        }
-        if (collateral.symbol === 'WBTC') {
-          _collateral = 10 ** 8;
-          break;
-        }
-        _collateral = 10 ** 6;
-
-        break;
-      case 'SOLANA':
-        if (collateral.native) {
-          _collateral = 10 ** 9;
-          break;
-        }
-        _collateral = 10 ** 6;
-        break;
-      case 'BITCOIN':
-        _collateral = 10 ** 8;
-        break;
-      default:
-        _collateral = 10 ** 6;
-    }
-    switch (principal?.network) {
-      case 'ETHEREUM':
-        if (
-          principal.native ||
-          principal.symbol === 'DAI' ||
-          principal.symbol === 'LINK' ||
-          principal.symbol === 'WETH' ||
-          principal.symbol === 'BNB'
-        ) {
-          _principal = 10 ** 18;
-          break;
-        }
-        if (principal.symbol === 'WBTC') {
-          _principal = 10 ** 8;
-          break;
-        }
-        _principal = 10 ** 6;
-
-        break;
-      case 'SOLANA':
-        if (principal.native) {
-          _principal = 10 ** 9;
-          break;
-        }
-        _principal = 10 ** 6;
-
-        break;
-      case 'BITCOIN':
-        _principal = 10 ** 8;
-        break;
-      default:
-        _principal = 10 ** 6;
-    }
-    return {
-      collateral: _collateral,
-      principal: _principal,
-    };
-  }, [collateral, principal]);
+  const _decimals = useMemo(() => {
+    if (!collateral || !principal) return { collateral: NaN, principal: NaN };
+    return decimals({ collateral, principal });
+  }, [collateral, decimals, principal]);
 
   const getStatusColor = (status: LoanStatus) => {
     switch (status) {
@@ -113,6 +45,7 @@ const AccountLoanCard = ({ loan }: { loan: Loan }) => {
         return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
     }
   };
+  
   const health = useMemo(() => {
     const timeActive = Number(loan?.createdAt) - new Date().getTime();
     // if time active is still under liquidation threshold (35% of loan Duration), then effectiveTime is capped
@@ -121,11 +54,11 @@ const AccountLoanCard = ({ loan }: { loan: Loan }) => {
       Number(loan?.loanDuration) * 0.35
     );
     const outstandingprincipal =
-      Number(loan?.principalAmount - loan?.totalRepaid) / decimals.principal;
+      Number(loan?.principalAmount - loan?.totalRepaid) / _decimals.principal;
     const interest =
       effectiveTime > timeActive
         ? (Number(loan?.principalAmount) * effectiveTime * loan?.interestRate) /
-          (100 * 365 * 86400 * decimals.principal)
+          (100 * 365 * 86400 * _decimals.principal)
         : (outstandingprincipal * effectiveTime * loan?.interestRate) /
           (100 * 365 * 86400);
     return {
@@ -133,7 +66,7 @@ const AccountLoanCard = ({ loan }: { loan: Loan }) => {
       outStanding: outstandingprincipal + interest,
       debtRatio:
         Number(loan?.totalRepaid) /
-        ((outstandingprincipal + interest) * decimals.principal),
+        ((outstandingprincipal + interest) * _decimals.principal),
     };
   }, [loan]);
 
@@ -180,7 +113,7 @@ const AccountLoanCard = ({ loan }: { loan: Loan }) => {
             <div className="h-auto w-auto flex flex-col items-start">
               <span className="text-2xl font-bold text-gray-800 dark:text-gray-200">
                 {(
-                  Number(loan?.principalAmount) / decimals.principal
+                  Number(loan?.principalAmount) / _decimals.principal
                 ).toLocaleString('en-US', {
                   minimumFractionDigits: 2,
                 })}
@@ -229,7 +162,7 @@ const AccountLoanCard = ({ loan }: { loan: Loan }) => {
             Total Repayment
           </div>
           <div className="font-medium text-gray-800 dark:text-gray-200">
-            {Number(loan.totalRepaid) / decimals.principal} {principal?.symbol}
+            {Number(loan.totalRepaid) / _decimals.principal} {principal?.symbol}
           </div>
         </div>
         <div>
@@ -239,7 +172,7 @@ const AccountLoanCard = ({ loan }: { loan: Loan }) => {
           <div className="w-auto h-auto flex flex-col items-start">
             <span className="text-base font-semibold text-gray-800 dark:text-gray-200">
               {(
-                Number(loan?.collateralAmount) / decimals.collateral
+                Number(loan?.collateralAmount) / _decimals.collateral
               ).toLocaleString('en-US', {
                 minimumFractionDigits: 2,
               })}
@@ -297,7 +230,7 @@ const AccountLoanCard = ({ loan }: { loan: Loan }) => {
               Repayment Progress
             </span>
             <span className="text-gray-800 dark:text-gray-200">
-              {(Number(loan.totalRepaid) / decimals.principal).toLocaleString(
+              {(Number(loan.totalRepaid) / _decimals.principal).toLocaleString(
                 'en-US',
                 { minimumFractionDigits: 2 }
               )}
@@ -314,8 +247,8 @@ const AccountLoanCard = ({ loan }: { loan: Loan }) => {
               style={{
                 width: `${Math.min(
                   calculateProgress(
-                    Number(loan.totalRepaid) / decimals.principal,
-                    Number(loan.principalAmount) / decimals.principal +
+                    Number(loan.totalRepaid) / _decimals.principal,
+                    Number(loan.principalAmount) / _decimals.principal +
                       health.interest
                   ),
                   100
@@ -351,6 +284,15 @@ const AccountLoanCard = ({ loan }: { loan: Loan }) => {
           View Details
         </Button>
       </div>
+
+      {/* Loan Details Modal */}
+      {openLoanDetails && (
+        <LoanModal
+          loan={loan}
+          open={openLoanDetails}
+          onClose={() => setOpenLoanDetails(false)}
+        />
+      )}
     </div>
   );
 };
