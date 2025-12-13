@@ -8,11 +8,11 @@ import type { EIP6963ProviderDetail } from '../types/wallet';
 
 export const useWalletState = (providers: EIP6963ProviderDetail[]) => {
   const [wallets, setWallets] = useState<Record<string, Wallet>>({});
-  const [configuringWalletState, setConfiguringWAlletState] =
+  const [configuringWalletState, setConfiguringWalletState] =
     useState<boolean>(false);
 
   const initWallets = async () => {
-    setConfiguringWAlletState(true);
+    setConfiguringWalletState(true);
     const _wallets: typeof wallets = {};
 
     for (const item of providers) {
@@ -41,7 +41,7 @@ export const useWalletState = (providers: EIP6963ProviderDetail[]) => {
         };
     }
     setWallets(_wallets);
-    setConfiguringWAlletState(false);
+    setConfiguringWalletState(false);
     return;
   };
 
