@@ -13,7 +13,7 @@ interface IDropField {
   type: HTMLInputTypeAttribute;
   formValues?: any;
   value: (_: any) => any;
-  key: string;
+  _key: string;
   options?: {
     name: string;
     data: any;
@@ -26,14 +26,14 @@ interface IDropField {
 
 const DropField: FC<IDropField> = ({
   type,
-  key,
+  _key,
   value,
   formValues,
   maxLength,
   options,
   placeholder,
 }) => {
-  const formValue = formValues[key];
+  const formValue = formValues[_key];
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState(formValue || '');
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -58,12 +58,12 @@ const DropField: FC<IDropField> = ({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setInputValue(newValue);
-    value((prev: any) => ({ ...prev, [key]: newValue }));
+    value((prev: any) => ({ ...prev, [_key]: newValue }));
   };
 
   const handleOptionSelect = (optionValue: string) => {
     setInputValue(optionValue);
-    value((prev: any) => ({ ...prev, [key]: optionValue }));
+    value((prev: any) => ({ ...prev, [_key]: optionValue }));
     setIsOpen(false);
   };
 
@@ -72,7 +72,7 @@ const DropField: FC<IDropField> = ({
       <div className="w-full relative">
         <input
           type={type}
-          name={key}
+          name={_key}
           value={inputValue}
           onChange={handleInputChange}
           placeholder={placeholder}

@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@coingecko/coingecko-typescript": "^2.3.0",
     "@tailwindcss/vite": "^4.1.17",
     "@types/react-router": "^5.1.20",
     "@web3icons/react": "4.1.6",

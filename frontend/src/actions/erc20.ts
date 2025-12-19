@@ -56,3 +56,5 @@ export const fetchTokenPrice = async (tokens: ISupportedAsset[]) => {
     return { error: error?.message || error };
   }
 };
+
+

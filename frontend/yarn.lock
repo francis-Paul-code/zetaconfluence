@@ -968,6 +968,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@coingecko/coingecko-typescript@npm:^2.3.0":
+  version: 2.3.0
+  resolution: "@coingecko/coingecko-typescript@npm:2.3.0"
+  checksum: 12a5d72af9d969572718b1b760705f50d73853019713ad0fe87cc695976748f7851d4af62374d4493d56035f73d7edfa78c7bd08f5bd95f59ceaf4c2639e5af9
+  languageName: node
+  linkType: hard
+
 "@coral-xyz/anchor-errors@npm:^0.30.1":
   version: 0.30.1
   resolution: "@coral-xyz/anchor-errors@npm:0.30.1"
@@ -9651,6 +9658,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "frontend@workspace:."
   dependencies:
+    "@coingecko/coingecko-typescript": ^2.3.0
     "@eslint/js": ^9.30.1
     "@tailwindcss/vite": ^4.1.17
     "@types/minimatch": ^5.0.1

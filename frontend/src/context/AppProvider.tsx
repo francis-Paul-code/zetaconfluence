@@ -1,11 +1,14 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { ChatMessage, ChatState } from '../types/chat';
+import type { Toast } from '../types/toast';
 import { AppContext, type IAppContext } from './AppContext';
 
 const CHAT_STORAGE_KEY = 'zetaconfluence_chat_history';
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  
   const [chat, setChat] = useState<ChatState>(() => {
     // Load chat history from localStorage on init
     const stored = localStorage.getItem(CHAT_STORAGE_KEY);
@@ -81,15 +84,26 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem(CHAT_STORAGE_KEY);
   }, []);
 
+  const addToast = useCallback((toast: Toast) => {
+    setToasts((prev) => [...prev, toast]);
+  }, []);
+
+  const removeToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+  }, []);
+
   const contextValue: IAppContext = useMemo(
     () => ({
       chat,
+      toasts,
       addMessage,
       toggleChat,
       setLoading,
       clearChat,
+      addToast,
+      removeToast,
     }),
-    [chat, addMessage, toggleChat, setLoading, clearChat]
+    [chat, toasts, addMessage, toggleChat, setLoading, clearChat, addToast, removeToast]
   );
 
   return (
