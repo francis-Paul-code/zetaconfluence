@@ -1,3 +1,4 @@
+import type { HexAddr } from '../config/viem';
 import type { EIP6963ProviderDetail } from '../types/wallet';
 
 export interface SupportedChain {
@@ -132,6 +133,8 @@ export interface ISupportedAsset {
   native?: boolean;
   decimals: number;
   address?: string;
+  zrc20Address?:HexAddr;
+  coingeckoId?: string;
   icon: string;
 }
 

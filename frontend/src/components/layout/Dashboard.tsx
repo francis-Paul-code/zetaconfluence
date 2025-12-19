@@ -7,6 +7,7 @@ import ChatBox from '../ChatBox';
 import { ConnectWallet } from '../ConnectWallet';
 import FAB from '../FAB';
 import { ThemeToggle } from '../ThemeToggle';
+import ToastContainer from '../ToastContainer';
 import SideNav from './SideNav';
 
 interface Props extends React.PropsWithChildren {
@@ -47,6 +48,7 @@ const Dashboard: React.FC<Props> = ({ children }) => {
       
       <FAB />
       <ChatBox />
+      <ToastContainer/>
     </div>
   );
 };

@@ -11,7 +11,7 @@ import {
   type Narrow,
   type WalletClient,
 } from 'viem';
-import { zetachain } from 'viem/chains';
+import { zetachain as zeta_prod, zetachainAthensTestnet } from 'viem/chains';
 
 import { type HexAddr } from '../config/viem';
 import {
@@ -24,6 +24,10 @@ import type { EIP6963ProviderDetail } from '../types/wallet';
 import { getSignerAndProvider } from './ethersHelpers';
 import gateway from './gateway';
 
+const zetachain =
+  import.meta.env.NODE_ENV === 'production'
+    ? zeta_prod
+    : zetachainAthensTestnet;
 interface RequestQueueItem {
   data: string;
   evmProvider?: EIP6963ProviderDetail;
@@ -108,14 +112,14 @@ export default {
           selectedProvider: evmProvider,
           primaryWallet: wallet,
         })!;
-        gateway.evm.depositAndCall(
+        const res = await gateway.evm.depositAndCall(
           {
-            receiver: process.env.VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
+            receiver: import.meta.env.VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
             revertOptions: {
               revertAddress: await signer?.signer.getAddress(),
               callOnRevert: true,
               revertMessage: 'CREATE_LOAN_REQUEST',
-              abortAddress: process.env
+              abortAddress: import.meta.env
                 .VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
             },
             types: payload[0],
@@ -125,6 +129,8 @@ export default {
           },
           signer?.signer!
         );
+
+        return res;
       }
       // else if (bitcoinProvider) {
       // } else if (solanaProvider) {
@@ -149,14 +155,18 @@ export default {
   ) => {
     try {
       const encodedBids = abiCoder.encode(
-        ['tuple(uint256 loanRequestId, address lender, uint256 amount, uint256 interestRate, address fundingAsset)[]'],
-        [bids.map(bid => [
-          bid.loanRequestId,
-          bid.lender,
-          bid.amount,
-          bid.interestRate,
-          bid.fundingAsset
-        ])]
+        [
+          'tuple(uint256 loanRequestId, address lender, uint256 amount, uint256 interestRate, address fundingAsset)[]',
+        ],
+        [
+          bids.map((bid) => [
+            bid.loanRequestId,
+            bid.lender,
+            bid.amount,
+            bid.interestRate,
+            bid.fundingAsset,
+          ]),
+        ]
       );
 
       const payload = [
@@ -174,12 +184,13 @@ export default {
         const firstBid = bids[0];
         gateway.evm.depositAndCall(
           {
-            receiver: process.env.VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
+            receiver: import.meta.env.VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
             revertOptions: {
               revertAddress: await signer?.signer.getAddress(),
               callOnRevert: true,
               revertMessage: 'PLACE_LOAN_REQUEST_BID',
-              abortAddress: process.env.VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
+              abortAddress: import.meta.env
+                .VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
             },
             types: payload[0],
             values: payload[1],
@@ -190,9 +201,7 @@ export default {
         );
       } else throw new Error('No provider provided');
     } catch (err) {
-      console.log(
-        `[ERROR] - [PROTOCOL] - [PLACE LOAN BID] - MESSAGE = ${err}`
-      );
+      console.log(`[ERROR] - [PROTOCOL] - [PLACE LOAN BID] - MESSAGE = ${err}`);
       if (err instanceof Error) throw err;
       throw new Error(err as string);
     }
@@ -221,12 +230,13 @@ export default {
 
         gateway.evm.gatewayCall(
           {
-            receiver: process.env.VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
+            receiver: import.meta.env.VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
             revertOptions: {
               revertAddress: await signer?.signer.getAddress(),
               callOnRevert: true,
               revertMessage: 'RECOVER_BID_FUNDING',
-              abortAddress: process.env.VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
+              abortAddress: import.meta.env
+                .VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
             },
             types: payload[0],
             values: payload[1],
@@ -270,12 +280,13 @@ export default {
 
         gateway.evm.gatewayCall(
           {
-            receiver: process.env.VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
+            receiver: import.meta.env.VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
             revertOptions: {
               revertAddress: await signer?.signer.getAddress(),
               callOnRevert: true,
               revertMessage: 'EXECUTE_LOAN',
-              abortAddress: process.env.VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
+              abortAddress: import.meta.env
+                .VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
             },
             types: payload[0],
             values: payload[1],
@@ -317,12 +328,13 @@ export default {
 
         gateway.evm.depositAndCall(
           {
-            receiver: process.env.VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
+            receiver: import.meta.env.VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
             revertOptions: {
               revertAddress: await signer?.signer.getAddress(),
               callOnRevert: true,
               revertMessage: 'REPAY_LOAN',
-              abortAddress: process.env.VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
+              abortAddress: import.meta.env
+                .VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
             },
             types: payload[0],
             values: payload[1],
@@ -368,15 +380,16 @@ export default {
 
         gateway.evm.gatewayCall(
           {
-            receiver: process.env.VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
+            receiver: import.meta.env.VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
             revertOptions: {
               revertAddress: await signer?.signer.getAddress(),
               callOnRevert: true,
               revertMessage: 'RECOVER_LOAN_COLLATERAL',
-              abortAddress: process.env.VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
+              abortAddress: import.meta.env
+                .VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
             },
             types: payload[0],
-            values: payload[1]
+            values: payload[1],
           },
           signer?.signer!
         );
@@ -475,7 +488,6 @@ export default {
         chain: zetachain,
         transport: http(import.meta.env.VITE_ZETA_RPC_URL),
       });
-
       const result = await publicClient.readContract({
         address: import.meta.env.VITE_P2P_LENDING_PROTOCOL_ADDRESS as HexAddr,
         abi: P2PLendingProtocolABI,

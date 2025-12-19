@@ -14,6 +14,11 @@ export const useLoansState = () => {
 
   const { wallets, selectedProviders } = useWallet();
 
+  const supportedAssets = useMemo(async () =>{ const res = await protocol.getSupportedAssetsSync()
+    console.log('Supported Assets: ', res)
+    return res
+  }, []);
+
   const getUserData = async ({
     account,
     wallet,
