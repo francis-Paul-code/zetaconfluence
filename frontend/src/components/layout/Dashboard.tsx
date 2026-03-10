@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
-import dark from '../../../public/logos/zetaconfluence_logo_clear_dark.svg';
-import light from '../../../public/logos/zetaconfluence_logo_clear_light.svg';
+import dark from '../../../public/logos/zetaconfluence_logo_clear_dark.png';
+import light from '../../../public/logos/zetaconfluence_logo_clear_light.png';
 import { useTheme } from '../../hooks/useTheme';
 import ChatBox from '../ChatBox';
 import { ConnectWallet } from '../ConnectWallet';
