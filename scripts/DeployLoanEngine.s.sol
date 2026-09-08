@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import "forge-std/Script.sol";
 import "forge-std/console.sol";
-import "../contracts/P2PLendingProtocol.sol";
+import "../contracts/v1/P2PLendingProtocol.sol";
 
 contract DeployP2PLendingProtocol is Script {
     function run() external {
