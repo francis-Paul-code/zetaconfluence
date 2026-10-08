@@ -1,4 +1,4 @@
- name: Deploy API to AWS Elastic Beanstalk
+name: Deploy API to AWS Elastic Beanstalk
 
 on:
   push:
