@@ -1,9 +1,16 @@
-name: Deploy API to AWS Elastic Beanstalk
+ name: Deploy API to AWS Elastic Beanstalk
 
 on:
   push:
     branches:
       - main
+      - staging
+    paths:
+      - 'api/**'
+      - '.github/workflows/deploy-api.yml'
+  pull_request:
+    branches:
+      - staging
     paths:
       - 'api/**'
       - '.github/workflows/deploy-api.yml'
