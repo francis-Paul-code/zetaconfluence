@@ -6,13 +6,13 @@ on:
       - main
       - staging
     paths:
-      - 'api/**'
+      - 'backend/api/**'
       - '.github/workflows/deploy-api.yml'
   pull_request:
     branches:
       - staging
     paths:
-      - 'api/**'
+      - 'backend/api/**'
       - '.github/workflows/deploy-api.yml'
 
 jobs:
@@ -32,15 +32,15 @@ jobs:
           cache-dependency-path: api/package-lock.json
 
       - name: Install dependencies
-        working-directory: ./api
+        working-directory: ./backend/api
         run: npm ci --legacy-peer-deps
 
       - name: Build application
-        working-directory: ./api
+        working-directory: ./backend/api
         run: npm run build
 
       - name: Create .env file from secrets
-        working-directory: ./api
+        working-directory: ./backend/api
         run: |
           cat << EOF > .env
           ${{ secrets.API_ENV_VARS }}
@@ -48,8 +48,8 @@ jobs:
 
       - name: Generate deployment package
         run: |
-          cd api
-          zip -r ../deploy.zip . -x "*.git*" "node_modules/*" "*.env.example*"
+          cd ./backend/api
+          zip -r ../../deploy.zip . -x "*.git*" "node_modules/*" "*.env.example*"
 
       - name: Get timestamp
         id: timestamp

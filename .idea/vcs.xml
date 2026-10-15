@@ -2,6 +2,7 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/dependencies/@aqua" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/dependencies/forge-std" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/dependencies/openzeppelin-contracts" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/dependencies/openzeppelin-contracts/lib/erc4626-tests" vcs="Git" />

@@ -11,4 +11,5 @@ library Errors {
     error AlreadyExecuted();
     error CollateralNotLocked();
     error InsufficientFunding();
+    error AquaNotInitialised();
 }
