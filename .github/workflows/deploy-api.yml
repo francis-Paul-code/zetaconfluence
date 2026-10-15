@@ -4,8 +4,15 @@ on:
   push:
     branches:
       - main
+      - staging
     paths:
-      - 'api/**'
+      - 'backend/api/**'
+      - '.github/workflows/deploy-api.yml'
+  pull_request:
+    branches:
+      - staging
+    paths:
+      - 'backend/api/**'
       - '.github/workflows/deploy-api.yml'
 
 jobs:
@@ -22,18 +29,18 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: api/package-lock.json
+          cache-dependency-path: ./backend/api/package-lock.json
 
       - name: Install dependencies
-        working-directory: ./api
+        working-directory: ./backend/api
         run: npm ci --legacy-peer-deps
 
       - name: Build application
-        working-directory: ./api
+        working-directory: ./backend/api
         run: npm run build
 
       - name: Create .env file from secrets
-        working-directory: ./api
+        working-directory: ./backend/api
         run: |
           cat << EOF > .env
           ${{ secrets.API_ENV_VARS }}
@@ -41,8 +48,8 @@ jobs:
 
       - name: Generate deployment package
         run: |
-          cd api
-          zip -r ../deploy.zip . -x "*.git*" "node_modules/*" "*.env.example*"
+          cd ./backend/api
+          zip -r ../../deploy.zip . -x "*.git*" "node_modules/*" "*.env.example*"
 
       - name: Get timestamp
         id: timestamp
@@ -56,6 +63,7 @@ jobs:
           application_name: ${{ secrets.EB_APPLICATION_NAME }}
           environment_name: ${{ secrets.EB_ENVIRONMENT_NAME }}
           version_label: "api-${{ steps.timestamp.outputs.time }}-${{ github.sha }}"
+          existing_bucket_name: ${{secrets.AWS_BUCKET_NAME}}
           region: us-east-1
           deployment_package: deploy.zip
           wait_for_deployment: true

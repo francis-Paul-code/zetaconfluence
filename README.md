@@ -1,6 +1,6 @@
 <div align="center" width="80%">
 
-<img src="./frontend/public/logos/zetaconfluence_logo_primary.png" alt="ZetaConfluence Logo" width="200"/>
+<img src="./frontend/app/public/logos/zetaconfluence_logo_primary.png" alt="ZetaConfluence Logo" width="200"/>
 
 # ZetaConfluence
 
