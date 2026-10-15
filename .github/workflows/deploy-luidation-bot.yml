@@ -22,7 +22,7 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: liquidation-bot/package-lock.json
+          cache-dependency-path: ./backend/liquidation-bot/package-lock.json
 
       - name: Install dependencies
         working-directory: ./backend/liquidation-bot
